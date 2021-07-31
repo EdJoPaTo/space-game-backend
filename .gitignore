@@ -1,0 +1,10 @@
+/target
+
+static/*.graphviz
+static/*.json
+static/*.png
+static/*.svg
+
+# Typescript stuff
+/*.ts
+typescript-typings/generated.ts

@@ -1,0 +1,11 @@
+---
+modtRookieLaser:
+  requiredCpu: 10
+  requiredPowergrid: 15
+  energyConsumption: 5
+  damage: 10
+modtRookieMiningLaser:
+  requiredCpu: 10
+  requiredPowergrid: 15
+  energyConsumption: 5
+  amountMined: 5

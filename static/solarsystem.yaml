@@ -1,0 +1,56 @@
+---
+system1:
+  name: Wabinihwa
+  security: 92
+  planets: 4
+  stargates:
+    system2: 3
+    system4: 4
+  stations:
+    - 2
+system2:
+  name: Liagi
+  security: 100
+  planets: 7
+  stargates:
+    system1: 5
+    system3: 7
+  stations:
+    - 3
+    - 5
+system3:
+  name: Iramil
+  security: 74
+  planets: 3
+  stargates:
+    system2: 2
+    system4: 3
+  stations:
+    - 2
+system4:
+  name: Arama
+  security: 51
+  planets: 2
+  stargates:
+    system1: 1
+    system3: 2
+    system5: 2
+  stations:
+    - 2
+system5:
+  name: Plagar
+  security: 21
+  planets: 4
+  stargates:
+    system4: 4
+    system6: 4
+  stations:
+    - 3
+system6:
+  name: Vosu
+  security: 4
+  planets: 5
+  stargates:
+    system5: 4
+  stations:
+    - 3

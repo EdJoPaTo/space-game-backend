@@ -1,0 +1,5 @@
+---
+modpRookieArmorPlate:
+  requiredCpu: 0
+  requiredPowergrid: 10
+  hitpointsArmor: 10

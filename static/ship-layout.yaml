@@ -1,0 +1,21 @@
+---
+shiplayoutFrigate:
+  slotsTargeted: 3
+  slotsSelf: 2
+  slotsPassive: 2
+  cpu: 80
+  powergrid: 100
+  capacitor: 100
+  capacitorRecharge: 7
+  hitpointsArmor: 25
+  hitpointsStructure: 15
+shiplayoutRookieShip:
+  slotsTargeted: 2
+  slotsSelf: 1
+  slotsPassive: 1
+  cpu: 30
+  powergrid: 50
+  capacitor: 40
+  capacitorRecharge: 5
+  hitpointsArmor: 20
+  hitpointsStructure: 10
