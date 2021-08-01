@@ -1,17 +1,14 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::{export, TS};
 
-use crate::types::fixed::modules::{ModulePassive, ModuleSelf, ModuleTargeted};
-use crate::types::fixed::shiplayout::ShipLayout;
-
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ShipFitting {
-    pub layout: ShipLayout,
+    pub layout: String,
 
-    pub slots_targeted: Vec<ModuleTargeted>,
-    pub slots_self: Vec<ModuleSelf>,
-    pub slots_passive: Vec<ModulePassive>,
+    pub slots_targeted: Vec<String>,
+    pub slots_self: Vec<String>,
+    pub slots_passive: Vec<String>,
 }
 
 /// The current situation of the ship.

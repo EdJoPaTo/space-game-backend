@@ -19,3 +19,6 @@ for file in ./*.ts ; do
         "$file" >> $targetfile
     rm "$file"
 done
+
+# Add final newline
+printf "\n" >> $targetfile

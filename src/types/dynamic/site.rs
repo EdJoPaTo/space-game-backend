@@ -17,14 +17,14 @@ pub struct SiteInfo {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SiteInternals {
     pub entities: Vec<SiteEntity>,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum SiteEntity {
     Facility(SiteEntityFacility),
     Lifeless(SiteEntityLifeless),
@@ -60,10 +60,27 @@ pub struct SiteEntityPlayer {
 
 export! {
     SiteInfo => "site-info.ts",
-    SiteInternals => "site-internals.ts",
-    SiteEntity => "site-entity.ts",
     SiteEntityFacility => "site-entity-facility.ts",
     SiteEntityLifeless => "site-entity-lifeless.ts",
     SiteEntityNpc => "site-entity-npc.ts",
     SiteEntityPlayer => "site-entity-player.ts",
+}
+
+#[test]
+fn can_parse() -> anyhow::Result<()> {
+    let origin = SiteEntity::Lifeless(SiteEntityLifeless {
+        id: "lifelessAsteroid".to_string(),
+    });
+    let json = serde_json::to_string_pretty(&origin)?;
+    println!("json {}", json);
+
+    let some = serde_json::from_str::<SiteEntity>(&json)?;
+    println!("some {:?}", some);
+
+    if let SiteEntity::Lifeless(v) = some {
+        assert_eq!(v.id, "lifelessAsteroid");
+        Ok(())
+    } else {
+        panic!();
+    }
 }

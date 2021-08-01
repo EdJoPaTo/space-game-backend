@@ -11,9 +11,10 @@ pub enum Service {
 #[derive(Debug, Serialize, Deserialize, TS, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "camelCase")]
 pub enum FacilityIdentifier {
-    // TODO: prefix via serde
-    FacilityStargate,
-    FacilityStation,
+    #[serde(rename = "facilityStargate")]
+    Stargate,
+    #[serde(rename = "facilityStation")]
+    Station,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
