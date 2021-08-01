@@ -88,13 +88,12 @@ jobs:
         if: runner.os != 'Windows'
         run: >
           tar --gzip -cvf ${{ env.ARTIFACT_NAME }}.tar.gz
-          completions LICENSE README.md
-          systemd/**/*.service systemd/**/*.timer systemd/**/*.conf
+          LICENSE README.md
           -C target/${{ matrix.triple }}/release backend
       - name: Package (windows)
         if: runner.os == 'Windows'
         run: |
-          7z a ${{ env.ARTIFACT_NAME }}.zip completions LICENSE README.md
+          7z a ${{ env.ARTIFACT_NAME }}.zip LICENSE README.md
           cd target/${{ matrix.triple }}/release
           7z a ../../../${{ env.ARTIFACT_NAME }}.zip backend.exe
           cd -
