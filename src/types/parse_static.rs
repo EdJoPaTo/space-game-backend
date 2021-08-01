@@ -212,8 +212,8 @@ fn graphviz_solarsystems() -> anyhow::Result<()> {
 
     text += "}\n";
     fs::write("static/solarsystems.graphviz", &text)?;
-    graphviz("svg", "solarsystems")?;
-    graphviz("png", "solarsystems")?;
+    drop(graphviz("svg", "solarsystems"));
+    drop(graphviz("png", "solarsystems"));
     Ok(())
 }
 
