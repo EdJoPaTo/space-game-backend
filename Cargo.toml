@@ -17,7 +17,6 @@ rand = "0.8"
 regex = "1"
 serde_json = "1"
 serde_yaml = "0.8"
-ts-rs = "3"
 #chrono = "0.4"
 #itertools = "0.10"
 #notify = "4"
@@ -35,3 +34,6 @@ features = ["derive"]
 #[dev-dependencies]
 #float_eq = "0.6"
 #tempfile = "3"
+
+[dependencies.typings]
+path = "../typings"
