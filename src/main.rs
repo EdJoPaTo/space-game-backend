@@ -3,12 +3,13 @@ use std::time::Instant;
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
-use typings::dynamic::player_location::{PlayerInSite, PlayerLocation};
-use typings::dynamic::ship::Fitting;
-use typings::dynamic::site;
-use typings::dynamic::site_entity::{self, SiteEntity};
 use typings::fixed::facility;
+use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::site::Kind;
+use typings::frontread::site_entity::{self, SiteEntity};
+use typings::persist::player_location::{PlayerInSite, PlayerLocation};
+use typings::persist::ship::Fitting;
+use typings::persist::site;
 
 mod statics;
 
@@ -52,8 +53,8 @@ async fn main() -> anyhow::Result<()> {
     });
 
     app.at("/player-location/:playerid").get(player_location);
-    app.at("/site-inners/:solarsystem/:unique").get(site_inners);
     app.at("/sites/:solarsystem").get(sites);
+    app.at("/sites/:solarsystem/:unique").get(site_entities);
 
     println!("http://localhost:8080");
     app.listen(LISTENER).await?;
@@ -86,34 +87,34 @@ async fn player_location(req: Request<()>) -> tide::Result<Response> {
 }
 
 #[allow(clippy::unused_async)]
-async fn site_inners(req: Request<()>) -> tide::Result<Response> {
+async fn site_entities(req: Request<()>) -> tide::Result<Response> {
     let solarsystem = req.param("solarsystem")?.to_string();
     let unique = req.param("unique")?.to_string();
     println!("site_inners args: {} {}", solarsystem, unique);
 
-    let result = site::Inners {
-        entities: vec![
-            SiteEntity::Facility(site_entity::Facility {
-                id: facility::Identifier::Station,
-            }),
-            SiteEntity::Npc(site_entity::Npc {
-                shiplayout: "shiplayoutRookieShip".into(),
-            }),
-            SiteEntity::Lifeless(site_entity::Lifeless {
-                id: "lifelessAsteroid".into(),
-            }),
-            SiteEntity::Lifeless(site_entity::Lifeless {
-                id: "lifelessAsteroid".into(),
-            }),
-            SiteEntity::Npc(site_entity::Npc {
-                shiplayout: "shiplayoutFrigate".into(),
-            }),
-            SiteEntity::Player(site_entity::Player {
-                id: "player-dummy-0".into(),
-                shiplayout: "shiplayoutRookieShip".into(),
-            }),
-        ],
-    };
+    let result = vec![
+        SiteEntity::Facility(site_entity::Facility {
+            id: facility::Identifier::Station,
+        }),
+        SiteEntity::Npc(site_entity::Npc {
+            faction: NpcFaction::Pirates,
+            shiplayout: "shiplayoutRookieShip".into(),
+        }),
+        SiteEntity::Lifeless(site_entity::Lifeless {
+            id: "lifelessAsteroid".into(),
+        }),
+        SiteEntity::Lifeless(site_entity::Lifeless {
+            id: "lifelessAsteroid".into(),
+        }),
+        SiteEntity::Npc(site_entity::Npc {
+            faction: NpcFaction::Guards,
+            shiplayout: "shiplayoutFrigate".into(),
+        }),
+        SiteEntity::Player(site_entity::Player {
+            id: "player-dummy-0".into(),
+            shiplayout: "shiplayoutRookieShip".into(),
+        }),
+    ];
 
     let body = serde_json::to_string_pretty(&result)?;
     Ok(Response::builder(StatusCode::Ok)
@@ -197,8 +198,8 @@ fn default_fitting() -> Fitting {
     }
 }
 
-fn default_status() -> typings::dynamic::ship::Status {
-    typings::dynamic::ship::Status {
+fn default_status() -> typings::persist::ship::Status {
+    typings::persist::ship::Status {
         capacitor: 40,
         hitpoints_armor: 20,
         hitpoints_structure: 10,

@@ -1,6 +1,6 @@
 use std::fs;
 
-use typings::data_export::{
+use typings::fixed::{
     Facilites, LifelessThingies, ModulesPassive, ModulesTargeted, ModulesUntargeted, ShipLayouts,
     Solarsystems,
 };
