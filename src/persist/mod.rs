@@ -3,8 +3,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-
-use crate::statics::Statics;
+use typings::fixed::Statics;
 
 pub mod site;
 

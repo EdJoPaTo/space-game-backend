@@ -11,14 +11,13 @@ use typings::persist::site;
 use crate::persist::site::{read_site_entries, read_sites};
 
 mod persist;
-mod statics;
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
     let app = {
         println!("load static data...");
         let measure = Instant::now();
-        let statics = statics::Statics::import("../typings/static").unwrap();
+        let statics = typings::fixed::Statics::import_yaml("../typings/static").unwrap();
         println!("  took {:?}", measure.elapsed());
 
         println!("init persist...");
@@ -81,7 +80,7 @@ async fn player_location(req: Request<()>) -> tide::Result<Response> {
     let result = PlayerLocation::Site(player_location::Site {
         solarsystem: "Wabinihwa".into(),
         site,
-        ship_fitting: default_fitting(),
+        ship_fitting: Fitting::default(),
         ship_status: default_status(),
     });
 
@@ -119,15 +118,6 @@ async fn sites(req: Request<()>) -> tide::Result<Response> {
         .body(body)
         .content_type(mime::JSON)
         .build())
-}
-
-fn default_fitting() -> Fitting {
-    Fitting {
-        layout: "shiplayoutRookieShip".into(),
-        slots_targeted: vec!["modtRookieMiningLaser".into(), "modtRookieLaser".into()],
-        slots_untargeted: vec!["moduRookieArmorRepair".into()],
-        slots_passive: vec!["modpRookieArmorPlate".into()],
-    }
 }
 
 fn default_status() -> typings::persist::ship::Status {
