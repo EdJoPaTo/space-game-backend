@@ -3,31 +3,43 @@ use std::time::Instant;
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
-use typings::fixed::facility;
-use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::site::Kind;
-use typings::frontread::site_entity::{self, SiteEntity};
 use typings::persist::player_location::{PlayerInSite, PlayerLocation};
 use typings::persist::ship::Fitting;
 use typings::persist::site;
 
-mod statics;
+use crate::persist::site::{read_site_entries, read_sites};
 
-const LISTENER: &str = "[::]:8080"; // Works for both IPv4 and IPv6
+mod persist;
+mod statics;
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
-    println!("Hello, world!");
+    let app = {
+        println!("load static data...");
+        let measure = Instant::now();
+        let statics = statics::Statics::import("../typings/static").unwrap();
+        println!("  took {:?}", measure.elapsed());
 
-    println!("load static data...");
-    let bla = Instant::now();
-    let statics = statics::Statics::import("../typings/static").unwrap();
-    let took = bla.elapsed();
-    println!("took {:?}", took);
-    println!("statics {:?}", statics);
+        println!("init persist...");
+        let measure = Instant::now();
+        persist::ensure_statics(&statics).unwrap();
+        println!("  took {:?}", measure.elapsed());
 
+        println!("init webserver...");
+        let measure = Instant::now();
+        let app = init_webserver();
+        println!("  took {:?}", measure.elapsed());
+        app
+    };
+
+    println!("Starting to listen on http://localhost:8080");
+    app.listen("[::]:8080").await?; // Works for both IPv4 and IPv6
+    Ok(())
+}
+
+fn init_webserver() -> tide::Server<()> {
     let mut app = tide::new();
-
     app.with(tide::utils::Before(|request: Request<()>| async {
         let mime = request.content_type();
         let method = request.method();
@@ -35,7 +47,6 @@ async fn main() -> anyhow::Result<()> {
         println!("incoming {} {:?} {}", method, mime, path);
         request
     }));
-
     app.with(After(|mut res: Response| async {
         if let Some(err) = res.error() {
             let msg = format!("Error: {:?}", err);
@@ -44,21 +55,16 @@ async fn main() -> anyhow::Result<()> {
         }
         Ok(res)
     }));
-
     app.at("/").get(|_| async {
         Ok(Response::builder(StatusCode::Ok)
             .body("Hello world")
             .content_type(mime::HTML)
             .build())
     });
-
     app.at("/player-location/:playerid").get(player_location);
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
-
-    println!("http://localhost:8080");
-    app.listen(LISTENER).await?;
-    Ok(())
+    app
 }
 
 #[allow(clippy::unused_async)]
@@ -73,7 +79,7 @@ async fn player_location(req: Request<()>) -> tide::Result<Response> {
     };
 
     let result = PlayerLocation::Site(PlayerInSite {
-        solarsystem: "system1".into(),
+        solarsystem: "Wabinihwa".into(),
         site,
         ship_fitting: default_fitting(),
         ship_status: default_status(),
@@ -90,32 +96,8 @@ async fn player_location(req: Request<()>) -> tide::Result<Response> {
 async fn site_entities(req: Request<()>) -> tide::Result<Response> {
     let solarsystem = req.param("solarsystem")?.to_string();
     let unique = req.param("unique")?.to_string();
-    println!("site_inners args: {} {}", solarsystem, unique);
-
-    let result = vec![
-        SiteEntity::Facility(site_entity::Facility {
-            id: facility::Identifier::Station,
-        }),
-        SiteEntity::Npc(site_entity::Npc {
-            faction: NpcFaction::Pirates,
-            shiplayout: "shiplayoutRookieShip".into(),
-        }),
-        SiteEntity::Lifeless(site_entity::Lifeless {
-            id: "lifelessAsteroid".into(),
-        }),
-        SiteEntity::Lifeless(site_entity::Lifeless {
-            id: "lifelessAsteroid".into(),
-        }),
-        SiteEntity::Npc(site_entity::Npc {
-            faction: NpcFaction::Guards,
-            shiplayout: "shiplayoutFrigate".into(),
-        }),
-        SiteEntity::Player(site_entity::Player {
-            id: "player-dummy-0".into(),
-            shiplayout: "shiplayoutRookieShip".into(),
-        }),
-    ];
-
+    let result = read_site_entries(&solarsystem, &unique)
+        .map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
     let body = serde_json::to_string_pretty(&result)?;
     Ok(Response::builder(StatusCode::Ok)
         .body(body)
@@ -126,62 +108,8 @@ async fn site_entities(req: Request<()>) -> tide::Result<Response> {
 #[allow(clippy::unused_async)]
 async fn sites(req: Request<()>) -> tide::Result<Response> {
     let solarsystem = req.param("solarsystem")?.to_string();
-    println!("sites args: {}", solarsystem);
-
-    let mut result = site::SitesNearPlanet::new();
-
-    result.insert(
-        1,
-        vec![site::Info {
-            kind: Kind::AsteroidField,
-            unique: "backend".into(),
-            name: None,
-        }],
-    );
-    result.insert(
-        2,
-        vec![
-            site::Info {
-                kind: Kind::FacilityStation,
-                unique: "station1".into(),
-                name: Some("Wabinihwa I".into()),
-            },
-            site::Info {
-                kind: Kind::AsteroidField,
-                unique: "isnt".into(),
-                name: None,
-            },
-            site::Info {
-                kind: Kind::AsteroidField,
-                unique: "creative".into(),
-                name: None,
-            },
-        ],
-    );
-    result.insert(
-        3,
-        vec![site::Info {
-            kind: Kind::FacilityStargate,
-            unique: "system2".into(),
-            name: Some("Liagi".into()),
-        }],
-    );
-    result.insert(
-        4,
-        vec![
-            site::Info {
-                kind: Kind::FacilityStargate,
-                unique: "system4".into(),
-                name: Some("Arama".into()),
-            },
-            site::Info {
-                kind: Kind::AsteroidField,
-                unique: "yet".into(),
-                name: None,
-            },
-        ],
-    );
-
+    let result =
+        read_sites(&solarsystem).map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
     let body = serde_json::to_string_pretty(&result)?;
     Ok(Response::builder(StatusCode::Ok)
         .body(body)
