@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use persist::player::read_station_assets;
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
@@ -8,6 +9,7 @@ use typings::persist::player_location::{self, PlayerLocation};
 use typings::persist::ship::Fitting;
 use typings::persist::site;
 
+use crate::persist::player::read_player_location;
 use crate::persist::site::{read_site_entries, read_sites};
 
 mod persist;
@@ -60,30 +62,33 @@ fn init_webserver() -> tide::Server<()> {
             .content_type(mime::HTML)
             .build())
     });
-    app.at("/player-location/:playerid").get(player_location);
+    app.at("/player-location/:player").get(player_location);
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
+    app.at("/station-assets/:player/:solarsystem/:station")
+        .get(station_assets);
     app
 }
 
 #[allow(clippy::unused_async)]
 async fn player_location(req: Request<()>) -> tide::Result<Response> {
-    let playerid = req.param("playerid")?.to_string();
-    println!("player_location: {}", playerid);
-
-    let site = site::Info {
-        kind: Kind::FacilityStation,
-        unique: "station1".into(),
-        name: Some("Wabinihwa I".into()),
+    let player = req.param("player")?.to_string();
+    println!("player_location: {}", player);
+    let result = if let Ok(location) = read_player_location(&player) {
+        location
+    } else {
+        let site = site::Info {
+            kind: Kind::FacilityStation,
+            unique: "station1".into(),
+            name: Some("Wabinihwa I".into()),
+        };
+        PlayerLocation::Site(player_location::Site {
+            solarsystem: "Wabinihwa".into(),
+            site,
+            ship_fitting: Fitting::default(),
+            ship_status: default_status(),
+        })
     };
-
-    let result = PlayerLocation::Site(player_location::Site {
-        solarsystem: "Wabinihwa".into(),
-        site,
-        ship_fitting: Fitting::default(),
-        ship_status: default_status(),
-    });
-
     let body = serde_json::to_string_pretty(&result)?;
     Ok(Response::builder(StatusCode::Ok)
         .body(body)
@@ -113,6 +118,19 @@ async fn sites(req: Request<()>) -> tide::Result<Response> {
     let solarsystem = req.param("solarsystem")?.to_string();
     let result =
         read_sites(&solarsystem).map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
+    let body = serde_json::to_string_pretty(&result)?;
+    Ok(Response::builder(StatusCode::Ok)
+        .body(body)
+        .content_type(mime::JSON)
+        .build())
+}
+
+#[allow(clippy::unused_async)]
+async fn station_assets(req: Request<()>) -> tide::Result<Response> {
+    let player = req.param("player")?.to_string();
+    let solarsystem = req.param("solarsystem")?.to_string();
+    let station = req.param("station")?.parse()?;
+    let result = read_station_assets(&player, &solarsystem, station).unwrap_or_default();
     let body = serde_json::to_string_pretty(&result)?;
     Ok(Response::builder(StatusCode::Ok)
         .body(body)

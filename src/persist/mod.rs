@@ -5,6 +5,7 @@ use std::path::Path;
 use anyhow::Result;
 use typings::fixed::Statics;
 
+pub mod player;
 pub mod site;
 
 fn read<T>(filename: &str) -> Result<T>
