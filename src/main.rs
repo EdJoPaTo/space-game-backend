@@ -4,7 +4,7 @@ use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 use typings::fixed::site::Kind;
-use typings::persist::player_location::{PlayerInSite, PlayerLocation};
+use typings::persist::player_location::{self, PlayerLocation};
 use typings::persist::ship::Fitting;
 use typings::persist::site;
 
@@ -78,7 +78,7 @@ async fn player_location(req: Request<()>) -> tide::Result<Response> {
         name: Some("Wabinihwa I".into()),
     };
 
-    let result = PlayerLocation::Site(PlayerInSite {
+    let result = PlayerLocation::Site(player_location::Site {
         solarsystem: "Wabinihwa".into(),
         site,
         ship_fitting: default_fitting(),
