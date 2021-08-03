@@ -96,8 +96,12 @@ async fn player_location(req: Request<()>) -> tide::Result<Response> {
 async fn site_entities(req: Request<()>) -> tide::Result<Response> {
     let solarsystem = req.param("solarsystem")?.to_string();
     let unique = req.param("unique")?.to_string();
-    let result = read_site_entries(&solarsystem, &unique)
-        .map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
+    let result: Vec<typings::frontread::site_entity::SiteEntity> =
+        read_site_entries(&solarsystem, &unique)
+            .map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?
+            .iter()
+            .map(|o| o.into())
+            .collect();
     let body = serde_json::to_string_pretty(&result)?;
     Ok(Response::builder(StatusCode::Ok)
         .body(body)
