@@ -43,10 +43,9 @@ async fn main() -> anyhow::Result<()> {
 fn init_webserver() -> tide::Server<()> {
     let mut app = tide::new();
     app.with(tide::utils::Before(|request: Request<()>| async {
-        let mime = request.content_type();
         let method = request.method();
         let path = request.url().path();
-        println!("incoming {} {:?} {}", method, mime, path);
+        println!("HTTP-REQUEST {} {}", method, path);
         request
     }));
     app.with(After(|mut res: Response| async {
