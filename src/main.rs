@@ -5,6 +5,7 @@ use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 use typings::fixed::site::Kind;
+use typings::frontrw::instruction::Instruction;
 use typings::persist::player_location::{self, PlayerLocation};
 use typings::persist::ship::Fitting;
 use typings::persist::site;
@@ -67,6 +68,10 @@ fn init_webserver() -> tide::Server<()> {
     app.at("/sites/:solarsystem/:unique").get(site_entities);
     app.at("/station-assets/:player/:solarsystem/:station")
         .get(station_assets);
+
+    app.at("/set-instructions/:player")
+        .post(testing_set_instructions);
+
     app
 }
 
@@ -83,7 +88,6 @@ where
 #[allow(clippy::unused_async)]
 async fn player_location(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
-    println!("player_location: {}", player);
     let body = if let Ok(location) = read_player_location(&player) {
         location
     } else {
@@ -138,4 +142,19 @@ fn default_status() -> typings::persist::ship::Status {
         hitpoints_armor: 20,
         hitpoints_structure: 10,
     }
+}
+
+#[allow(clippy::unused_async)]
+async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
+    let player = req.param("player")?.to_string();
+    let instructions = req.body_json::<Vec<Instruction>>().await?;
+
+    println!(
+        "Instructions for player {} ({}): {:?}",
+        player,
+        instructions.len(),
+        instructions
+    );
+
+    Ok(Response::builder(StatusCode::Ok).build())
 }
