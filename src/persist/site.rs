@@ -3,6 +3,7 @@ use typings::fixed::facility;
 use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::site::Kind;
 use typings::fixed::Solarsystems;
+use typings::persist::ship::{Fitting, Ship, Status};
 use typings::persist::site::{Info, SitesNearPlanet};
 use typings::persist::site_entity::{Facility, Npc, SiteEntity};
 
@@ -162,8 +163,21 @@ fn add_guards(entities: &mut Vec<SiteEntity>) {
             0,
             SiteEntity::Npc(Npc {
                 faction: NpcFaction::Guards,
-                // TODO: ensure layout exists
-                shiplayout: "shiplayoutFrigate".to_string(),
+                ship: Ship {
+                    fitting: Fitting {
+                        // TODO: ensure layout exists
+                        layout: "shiplayoutFrigate".to_string(),
+                        slots_passive: vec![],
+                        slots_targeted: vec![],
+                        slots_untargeted: vec![],
+                    },
+                    // TODO: better status
+                    status: Status {
+                        capacitor: 42,
+                        hitpoints_armor: 42,
+                        hitpoints_structure: 42,
+                    },
+                },
             }),
         );
     }

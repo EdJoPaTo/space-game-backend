@@ -1,13 +1,13 @@
 use std::time::Instant;
 
-use persist::player::read_station_assets;
+use persist::player::{read_player_ship, read_station_assets};
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 use typings::fixed::site::Kind;
 use typings::frontrw::instruction::Instruction;
 use typings::persist::player_location::{self, PlayerLocation};
-use typings::persist::ship::Fitting;
+use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site;
 
 use crate::persist::player::read_player_location;
@@ -62,11 +62,13 @@ fn init_webserver() -> tide::Server<()> {
             .content_type(mime::HTML)
             .build())
     });
-    app.at("/player-location/:player").get(player_location);
+    app.at("/player/:player/location").get(player_location);
+    app.at("/player/:player/ship").get(player_ship);
+    app.at("/player/:player/station-assets/:solarsystem/:station")
+        .get(station_assets);
+
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
-    app.at("/station-assets/:player/:solarsystem/:station")
-        .get(station_assets);
 
     app.at("/set-instructions/:player")
         .post(testing_set_instructions);
@@ -98,9 +100,21 @@ async fn player_location(req: Request<()>) -> tide::Result {
         PlayerLocation::Site(player_location::Site {
             solarsystem: "Wabinihwa".into(),
             site,
-            ship_fitting: Fitting::default(),
-            ship_status: default_status(),
         })
+    };
+    tide_json_response(&body)
+}
+
+#[allow(clippy::unused_async)]
+async fn player_ship(req: Request<()>) -> tide::Result {
+    let player = req.param("player")?.to_string();
+    let body = if let Ok(ship) = read_player_ship(&player) {
+        ship
+    } else {
+        Ship {
+            fitting: Fitting::default(),
+            status: default_status(),
+        }
     };
     tide_json_response(&body)
 }
