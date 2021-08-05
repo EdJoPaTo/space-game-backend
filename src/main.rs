@@ -93,7 +93,7 @@ async fn player_location(req: Request<()>) -> tide::Result {
         location
     } else {
         let site = site::Info {
-            kind: Kind::FacilityStation,
+            kind: Kind::Station,
             unique: "station1".into(),
             name: Some("Wabinihwa I".into()),
         };

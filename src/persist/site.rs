@@ -80,7 +80,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             let sites = sites.entry(planet).or_default();
             *sites = sites
                 .iter()
-                .filter(|o| !matches!(o.kind, Kind::FacilityStargate | Kind::FacilityStation))
+                .filter(|o| !matches!(o.kind, Kind::Stargate | Kind::Station))
                 .cloned()
                 .collect();
         }
@@ -111,7 +111,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             sites.entry(*planet).or_default().insert(
                 0,
                 Info {
-                    kind: Kind::FacilityStargate,
+                    kind: Kind::Stargate,
                     name: Some(name),
                     unique,
                 },
@@ -145,7 +145,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             sites.entry(planet).or_default().insert(
                 0,
                 Info {
-                    kind: Kind::FacilityStation,
+                    kind: Kind::Station,
                     name: Some(name),
                     unique,
                 },
