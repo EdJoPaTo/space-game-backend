@@ -1,11 +1,16 @@
 use anyhow::Result;
+use typings::fixed::solarsystem;
 use typings::persist::player_assets::PlayerStationAssets;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
 
 use super::{read, write};
 
-fn filename_station_assets(player: &str, solarsystem: &str, station: u8) -> String {
+fn filename_station_assets(
+    player: &str,
+    solarsystem: solarsystem::Identifier,
+    station: u8,
+) -> String {
     format!(
         "persist/station-assets/{}/{}-{}.yaml",
         player, solarsystem, station
@@ -20,14 +25,14 @@ fn filename_player_ship(player: &str) -> String {
 
 pub fn read_station_assets(
     player: &str,
-    solarsystem: &str,
+    solarsystem: solarsystem::Identifier,
     station: u8,
 ) -> Result<PlayerStationAssets> {
     read(&filename_station_assets(player, solarsystem, station))
 }
 pub fn write_station_assets(
     player: &str,
-    solarsystem: &str,
+    solarsystem: solarsystem::Identifier,
     station: u8,
     assets: &PlayerStationAssets,
 ) -> Result<()> {
