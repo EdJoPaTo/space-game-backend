@@ -31,8 +31,7 @@ pub fn read_sites(solarsystem: solarsystem::Identifier) -> Result<SitesNearPlane
     read(&filename_sites(solarsystem))
 }
 
-// write_site_entries and update are the same currently
-pub fn update(
+pub fn write_site_entries(
     solarsystem: solarsystem::Identifier,
     site_unique: &str,
     entries: &[SiteEntity],
@@ -59,7 +58,7 @@ pub fn add(
     site: Info,
     entries: &[SiteEntity],
 ) -> Result<()> {
-    update(solarsystem, &site.unique, entries)?;
+    write_site_entries(solarsystem, &site.unique, entries)?;
 
     let mut sites = read_sites(solarsystem)?;
     sites.entry(planet).or_default().push(site);
@@ -121,7 +120,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                     id: facility::Identifier::Stargate,
                 }),
             );
-            update(*solarsystem, &unique, &entities)?;
+            write_site_entries(*solarsystem, &unique, &entities)?;
 
             sites.entry(*planet).or_default().insert(
                 0,
@@ -155,7 +154,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                     id: facility::Identifier::Station,
                 }),
             );
-            update(*solarsystem, &unique, &entities)?;
+            write_site_entries(*solarsystem, &unique, &entities)?;
 
             sites.entry(planet).or_default().insert(
                 0,

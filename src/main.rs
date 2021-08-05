@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Instant;
 
 use persist::player::{read_player_ship, read_station_assets};
@@ -10,9 +11,11 @@ use typings::persist::player_location::{self, PlayerLocation};
 use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site;
 
-use crate::persist::player::read_player_location;
-use crate::persist::site::{read_site_entries, read_sites};
+use crate::math::round::advance;
+use crate::persist::player::{read_player_location, write_player_location, write_player_ship};
+use crate::persist::site::{read_site_entries, read_sites, write_site_entries};
 
+mod math;
 mod persist;
 
 #[async_std::main]
@@ -95,7 +98,7 @@ async fn player_location(req: Request<()>) -> tide::Result {
     } else {
         PlayerLocation::Site(player_location::Site {
             solarsystem: solarsystem::Identifier::default(),
-            site: site::Info::generate_station(solarsystem::Identifier::default(), 0),
+            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0).unique,
         })
     };
     tide_json_response(&body)
@@ -158,6 +161,8 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
     let instructions = req.body_json::<Vec<Instruction>>().await?;
 
+    let measure = Instant::now();
+
     println!(
         "Instructions for player {} ({}): {:?}",
         player,
@@ -165,5 +170,53 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
         instructions
     );
 
+    let statics = Statics::import_yaml("../typings/static")?;
+    let location = read_player_location(&player).unwrap_or_else(|_| {
+        PlayerLocation::Site(player_location::Site {
+            solarsystem: solarsystem::Identifier::default(),
+            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0).unique,
+        })
+    });
+    let mut player_locations = HashMap::new();
+    player_locations.insert(player.to_string(), location.clone());
+    let solarsystem = location.solarsystem();
+
+    let site_unique = match location {
+        PlayerLocation::Site(site) => site.site_unique,
+        PlayerLocation::Warp(warp) => warp.towards_site_unique,
+        PlayerLocation::Station(_) => site::Info::generate_station(solarsystem, 0).unique,
+    };
+
+    let mut site_entities = read_site_entries(solarsystem, &site_unique).unwrap_or_default();
+
+    let ship = read_player_ship(&player).unwrap_or_else(|_| Ship {
+        fitting: Fitting::default(),
+        status: default_status(),
+    });
+    let mut player_ships = HashMap::new();
+    player_ships.insert(player.to_string(), ship);
+
+    let mut player_instructions = HashMap::new();
+    player_instructions.insert(player.to_string(), instructions);
+
+    advance(
+        &statics,
+        solarsystem,
+        &site_unique,
+        &mut site_entities,
+        &player_instructions,
+        &mut player_locations,
+        &mut player_ships,
+    );
+
+    write_site_entries(solarsystem, &site_unique, &site_entities)?;
+    for (player, ship) in player_ships {
+        write_player_ship(&player, &ship)?;
+    }
+    for (player, location) in player_locations {
+        write_player_location(&player, &location)?;
+    }
+
+    println!("  instructions took {:?}", measure.elapsed());
     Ok(Response::builder(StatusCode::Ok).build())
 }
