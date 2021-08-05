@@ -4,7 +4,7 @@ use persist::player::{read_player_ship, read_station_assets};
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
-use typings::fixed::solarsystem;
+use typings::fixed::{solarsystem, Statics};
 use typings::frontrw::instruction::Instruction;
 use typings::persist::player_location::{self, PlayerLocation};
 use typings::persist::ship::{Fitting, Ship};
@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
     let app = {
         println!("load static data...");
         let measure = Instant::now();
-        let statics = typings::fixed::Statics::import_yaml("../typings/static").unwrap();
+        let statics = Statics::import_yaml("../typings/static").unwrap();
         println!("  took {:?}", measure.elapsed());
 
         println!("init persist...");
@@ -51,6 +51,7 @@ fn init_webserver() -> tide::Server<()> {
     app.with(After(|mut res: Response| async {
         if let Some(err) = res.error() {
             let msg = format!("Error: {:?}", err);
+            eprintln!("HTTP ERROR {}", err);
             // NOTE: You may want to avoid sending error messages in a production server.
             res.set_body(msg);
         }
@@ -116,7 +117,7 @@ async fn player_ship(req: Request<()>) -> tide::Result {
 
 #[allow(clippy::unused_async)]
 async fn site_entities(req: Request<()>) -> tide::Result {
-    let solarsystem = serde_json::from_str(req.param("solarsystem")?)?;
+    let solarsystem = req.param("solarsystem")?.parse()?;
     let unique = req.param("unique")?.to_string();
     let body: Vec<typings::frontread::site_entity::SiteEntity> =
         read_site_entries(solarsystem, &unique)
@@ -129,7 +130,7 @@ async fn site_entities(req: Request<()>) -> tide::Result {
 
 #[allow(clippy::unused_async)]
 async fn sites(req: Request<()>) -> tide::Result {
-    let solarsystem = serde_json::from_str(req.param("solarsystem")?)?;
+    let solarsystem = req.param("solarsystem")?.parse()?;
     let body =
         read_sites(solarsystem).map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
     tide_json_response(&body)
@@ -138,7 +139,7 @@ async fn sites(req: Request<()>) -> tide::Result {
 #[allow(clippy::unused_async)]
 async fn station_assets(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
-    let solarsystem = serde_json::from_str(req.param("solarsystem")?)?;
+    let solarsystem = req.param("solarsystem")?.parse()?;
     let station = req.param("station")?.parse()?;
     let body = read_station_assets(&player, solarsystem, station).unwrap_or_default();
     tide_json_response(&body)
