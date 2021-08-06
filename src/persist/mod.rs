@@ -30,6 +30,14 @@ where
     Ok(())
 }
 
+fn delete(filename: &str) -> Result<()> {
+    let path = Path::new(filename);
+    if path.exists() {
+        std::fs::remove_file(path)?;
+    }
+    Ok(())
+}
+
 pub fn ensure_statics(statics: &Statics) -> Result<()> {
     site::ensure_statics(&statics.solarsystems)?;
     Ok(())

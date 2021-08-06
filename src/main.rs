@@ -12,7 +12,10 @@ use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site;
 
 use crate::math::round::advance;
-use crate::persist::player::{read_player_location, write_player_location, write_player_ship};
+use crate::persist::player::{
+    bodge_find_player_in_warp, pop_players_in_warp, read_player_location, write_player_location,
+    write_player_ship,
+};
 use crate::persist::site::{read_site_entries, read_sites, write_site_entries};
 
 mod math;
@@ -145,7 +148,7 @@ async fn station_assets(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
     let solarsystem = req.param("solarsystem")?.parse()?;
     let station = req.param("station")?.parse()?;
-    let body = read_station_assets(&player, solarsystem, station).unwrap_or_default();
+    let body = read_station_assets(&player, solarsystem, station);
     tide_json_response(&body)
 }
 
@@ -185,7 +188,7 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
 
     let site_unique = match location {
         PlayerLocation::Site(site) => site.site_unique,
-        PlayerLocation::Warp(warp) => warp.towards_site_unique,
+        PlayerLocation::Warp(_) => bodge_find_player_in_warp(solarsystem, &player)?,
         PlayerLocation::Station(_) => site::Info::generate_station(solarsystem, 0).site_unique,
     };
 
@@ -201,6 +204,8 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
     let mut player_instructions = HashMap::new();
     player_instructions.insert(player.to_string(), instructions);
 
+    let players_warping_in = pop_players_in_warp(solarsystem, &site_unique);
+
     advance(
         &statics,
         &(site::Identifier {
@@ -211,6 +216,7 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
         &player_instructions,
         &mut player_locations,
         &mut player_ships,
+        &players_warping_in,
     );
 
     write_site_entries(solarsystem, &site_unique, &site_entities)?;
