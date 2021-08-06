@@ -92,11 +92,7 @@ pub fn advance(
                 *location = PlayerLocation::Warp(Warp {
                     solarsystem: site_identifier.solarsystem,
                 });
-                add_player_in_warp(
-                    site_identifier.solarsystem,
-                    &site_identifier.site_unique,
-                    player,
-                )?;
+                add_player_in_warp(site_identifier.solarsystem, &warp.site_unique, player)?;
             }
         }
     }
