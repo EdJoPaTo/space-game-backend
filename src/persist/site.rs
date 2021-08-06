@@ -48,7 +48,10 @@ pub fn read_site_info(
     site_unique: &str,
 ) -> Result<Option<Info>> {
     let sites = read_sites(solarsystem)?;
-    let site = sites.values().flatten().find(|o| o.unique == site_unique);
+    let site = sites
+        .values()
+        .flatten()
+        .find(|o| o.site_unique == site_unique);
     Ok(site.cloned())
 }
 
@@ -58,7 +61,7 @@ pub fn add(
     site: Info,
     entries: &[SiteEntity],
 ) -> Result<()> {
-    write_site_entries(solarsystem, &site.unique, entries)?;
+    write_site_entries(solarsystem, &site.site_unique, entries)?;
 
     let mut sites = read_sites(solarsystem)?;
     sites.entry(planet).or_default().push(site);
@@ -77,7 +80,7 @@ pub fn remove(solarsystem: solarsystem::Identifier, site_unique: &str) -> Result
 
 fn position_of_site_unique(sites: &SitesNearPlanet, unique: &str) -> Option<(u8, usize)> {
     for (planet, entries) in sites {
-        if let Some(position) = entries.iter().position(|o| o.unique == unique) {
+        if let Some(position) = entries.iter().position(|o| o.site_unique == unique) {
             return Some((planet.to_owned(), position));
         }
     }
@@ -102,10 +105,10 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
         // Ensure stargates exist
         for (target, planet) in &data.stargates {
             let name = target.to_string();
-            let unique = format!("stargate{}", target);
+            let site_unique = format!("stargate{}", target);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entries(*solarsystem, &unique)
+            let mut entities = read_site_entries(*solarsystem, &site_unique)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, SiteEntity::Facility(_) | SiteEntity::Npc(_)))
@@ -120,14 +123,14 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                     id: facility::Identifier::Stargate,
                 }),
             );
-            write_site_entries(*solarsystem, &unique, &entities)?;
+            write_site_entries(*solarsystem, &site_unique, &entities)?;
 
             sites.entry(*planet).or_default().insert(
                 0,
                 Info {
                     kind: Kind::Stargate,
                     name: Some(name),
-                    unique,
+                    site_unique,
                 },
             );
         }
@@ -136,10 +139,10 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
         for (index, planet) in data.stations.iter().copied().enumerate() {
             let number = index + 1;
             let name = format!("{} {}", solarsystem, number);
-            let unique = format!("station{}", number);
+            let site_unique = format!("station{}", number);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entries(*solarsystem, &unique)
+            let mut entities = read_site_entries(*solarsystem, &site_unique)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, SiteEntity::Facility(_) | SiteEntity::Npc(_)))
@@ -154,14 +157,14 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                     id: facility::Identifier::Station,
                 }),
             );
-            write_site_entries(*solarsystem, &unique, &entities)?;
+            write_site_entries(*solarsystem, &site_unique, &entities)?;
 
             sites.entry(planet).or_default().insert(
                 0,
                 Info {
                     kind: Kind::Station,
                     name: Some(name),
-                    unique,
+                    site_unique,
                 },
             );
         }

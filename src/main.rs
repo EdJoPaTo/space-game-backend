@@ -7,7 +7,7 @@ use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 use typings::fixed::{solarsystem, Statics};
 use typings::frontrw::instruction::Instruction;
-use typings::persist::player_location::{self, PlayerLocation};
+use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site;
 
@@ -96,9 +96,10 @@ async fn player_location(req: Request<()>) -> tide::Result {
     let body = if let Ok(location) = read_player_location(&player) {
         location
     } else {
-        PlayerLocation::Site(player_location::Site {
+        PlayerLocation::Site(site::Identifier {
             solarsystem: solarsystem::Identifier::default(),
-            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0).unique,
+            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0)
+                .site_unique,
         })
     };
     tide_json_response(&body)
@@ -172,9 +173,10 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
 
     let statics = Statics::import_yaml("../typings/static")?;
     let location = read_player_location(&player).unwrap_or_else(|_| {
-        PlayerLocation::Site(player_location::Site {
+        PlayerLocation::Site(site::Identifier {
             solarsystem: solarsystem::Identifier::default(),
-            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0).unique,
+            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0)
+                .site_unique,
         })
     });
     let mut player_locations = HashMap::new();
@@ -184,7 +186,7 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
     let site_unique = match location {
         PlayerLocation::Site(site) => site.site_unique,
         PlayerLocation::Warp(warp) => warp.towards_site_unique,
-        PlayerLocation::Station(_) => site::Info::generate_station(solarsystem, 0).unique,
+        PlayerLocation::Station(_) => site::Info::generate_station(solarsystem, 0).site_unique,
     };
 
     let mut site_entities = read_site_entries(solarsystem, &site_unique).unwrap_or_default();
@@ -201,8 +203,10 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
 
     advance(
         &statics,
-        solarsystem,
-        &site_unique,
+        &(site::Identifier {
+            solarsystem,
+            site_unique: site_unique.to_string(),
+        }),
         &mut site_entities,
         &player_instructions,
         &mut player_locations,
