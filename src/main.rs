@@ -217,7 +217,7 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
         &mut player_locations,
         &mut player_ships,
         &players_warping_in,
-    );
+    )?;
 
     write_site_entries(solarsystem, &site_unique, &site_entities)?;
     for (player, ship) in player_ships {

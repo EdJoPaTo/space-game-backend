@@ -15,7 +15,6 @@ use typings::persist::site_entity::{Player, SiteEntity};
 // TODO: has to be argument or return value
 use crate::persist::player::add_player_in_warp;
 
-// TODO: deny panics
 pub fn advance(
     statics: &Statics,
     site_identifier: &site::Identifier,
@@ -24,7 +23,7 @@ pub fn advance(
     player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
     player_ships: &mut HashMap<player::Identifier, Ship>,
     players_warping_in: &[player::Identifier],
-) {
+) -> anyhow::Result<()> {
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: mark a player "interactive" and abort warp when something affected the player?
 
@@ -53,7 +52,9 @@ pub fn advance(
                     // TODO: module energy consumption or something
                 }
             }
-            Instruction::ModuleTargeted(_) => todo!(),
+            Instruction::ModuleTargeted(_) => {
+                // TODO
+            }
             Instruction::Undock => {
                 *location = PlayerLocation::Site(site::Identifier {
                     solarsystem: site_identifier.solarsystem,
@@ -61,30 +62,31 @@ pub fn advance(
                         .site_unique,
                 });
             }
-            Instruction::Facility(facility) => match facility.service {
-                Service::Dock => {
-                    remove_player_from_entities(site_entities, &player);
-                    *location = PlayerLocation::Station(Station {
-                        solarsystem: site_identifier.solarsystem,
-                        station,
-                    });
-                }
-                Service::Jump => {
-                    let target_solarsystem = site_identifier
+            Instruction::Facility(facility) => {
+                match facility.service {
+                    Service::Dock => {
+                        remove_player_from_entities(site_entities, &player);
+                        *location = PlayerLocation::Station(Station {
+                            solarsystem: site_identifier.solarsystem,
+                            station,
+                        });
+                    }
+                    Service::Jump => {
+                        let target_solarsystem = site_identifier
                         .site_unique
                         .trim_start_matches("stargate")
                         .parse()
-                        .unwrap();
-                    let target_site = Info::generate_stargate(site_identifier.solarsystem);
+                        .unwrap_or_else(|_| panic!("stargate site_unique is formatted differently than expected {}", site_identifier.site_unique));
+                        let target_site = Info::generate_stargate(site_identifier.solarsystem);
 
-                    remove_player_from_entities(site_entities, &player);
-                    *location = PlayerLocation::Warp(Warp {
-                        solarsystem: target_solarsystem,
-                    });
-                    add_player_in_warp(target_solarsystem, &target_site.site_unique, player)
-                        .unwrap();
+                        remove_player_from_entities(site_entities, &player);
+                        *location = PlayerLocation::Warp(Warp {
+                            solarsystem: target_solarsystem,
+                        });
+                        add_player_in_warp(target_solarsystem, &target_site.site_unique, player)?;
+                    }
                 }
-            },
+            }
             Instruction::Warp(warp) => {
                 remove_player_from_entities(site_entities, &player);
                 *location = PlayerLocation::Warp(Warp {
@@ -94,8 +96,7 @@ pub fn advance(
                     site_identifier.solarsystem,
                     &site_identifier.site_unique,
                     player,
-                )
-                .unwrap();
+                )?;
             }
         }
     }
@@ -104,7 +105,12 @@ pub fn advance(
     for player in players_warping_in {
         site_entities.push(SiteEntity::Player(Player {
             id: player.to_string(),
-            shiplayout: player_ships.get(player).unwrap().fitting.layout.to_string(),
+            shiplayout: player_ships
+                .get(player)
+                .expect("player warping in also has to be in player_ships")
+                .fitting
+                .layout
+                .to_string(),
         }));
         player_locations.insert(
             player.to_string(),
@@ -114,6 +120,8 @@ pub fn advance(
             }),
         );
     }
+
+    Ok(())
 }
 
 fn remove_player_from_entities(site_entities: &mut Vec<SiteEntity>, player: &str) {
