@@ -18,29 +18,33 @@ fn apply_damage(status: &mut Status, damage: u16) {
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation
 )]
-pub fn apply_to_status(before: &Status, max: &Status, effect: &Effect) -> Status {
-    let mut result = before.clone();
+/// Doesnt care about whats possible with a given ship!
+pub fn apply_to_status(before: &Status, effects: &[Effect]) -> Status {
+    let mut capacitor = before.capacitor as i32;
+    let mut armor = before.hitpoints_armor;
+    let mut damage_sum: u16 = 0;
 
-    match effect {
-        Effect::Capacitor(amount) => {
-            let before = before.capacitor as i32;
-            let after = before
-                .saturating_add(*amount as i32)
-                .max(0)
-                .min(max.capacitor as i32);
-            result.capacitor = after as u16;
+    for effect in effects {
+        match effect {
+            Effect::Capacitor(amount) => {
+                capacitor = capacitor.saturating_add(*amount as i32);
+            }
+            Effect::ArmorRepair(amount) => {
+                armor = armor.saturating_add(*amount);
+            }
+            Effect::Damage(damage) => {
+                damage_sum = damage_sum.saturating_add(*damage);
+            }
+            Effect::Mine(_) | Effect::WarpDisruption => { /* No effect */ }
         }
-        Effect::ArmorRepair(amount) => {
-            result.hitpoints_armor = before
-                .hitpoints_armor
-                .saturating_add(*amount)
-                .min(max.hitpoints_armor);
-        }
-        Effect::Damage(damage) => {
-            apply_damage(&mut result, *damage);
-        }
-        Effect::Mine(_) | Effect::WarpDisruption => { /* No effect */ }
     }
+
+    let mut result = Status {
+        capacitor: capacitor.max(0) as u16,
+        hitpoints_armor: armor,
+        hitpoints_structure: before.hitpoints_structure,
+    };
+    apply_damage(&mut result, damage_sum);
     result
 }
 

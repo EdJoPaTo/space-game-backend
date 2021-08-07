@@ -17,10 +17,9 @@ use typings::persist::player;
 use typings::persist::player_location::{PlayerLocation, Station, Warp};
 use typings::persist::ship::{Fitting, Ship, Status};
 use typings::persist::site::{self, Info};
-use typings::persist::site_entity::{Player, SiteEntity};
+use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
 use crate::math::effect::apply_to_status;
-use crate::math::ship::calc_max;
 // TODO: has to be argument or return value
 use crate::persist::player::add_player_in_warp;
 
@@ -98,26 +97,24 @@ pub fn advance(
             match entity {
                 SiteEntity::Facility(_) | SiteEntity::Lifeless(_) => { /* Currently immune */ }
                 SiteEntity::Npc(npc) => {
-                    let max = calc_max(statics, &npc.ship.fitting)?;
-                    for effect in effects {
-                        npc.ship.status = apply_to_status(&npc.ship.status, &max, &effect);
-                    }
+                    npc.ship.status = apply_to_status(&npc.ship.status, &effects);
                 }
                 SiteEntity::Player(player) => {
                     let ship = player_ships
                         .get_mut(&player.id)
                         .expect("player has to be in player_ships");
-                    let max = calc_max(statics, &ship.fitting)?;
-                    for effect in effects {
-                        ship.status = apply_to_status(&ship.status, &max, &effect);
-                    }
+                    ship.status = apply_to_status(&ship.status, &effects);
                 }
             }
         }
     }
 
+    // cleanup dead or impaired
+    *site_entities = cleanup_entities(statics, site_entities, player_ships)?;
+
     // Finally do movements
     for (player, instruction) in &sorted_instructions {
+        // TODO: check if player is still in site_entites. If not the player is dead
         let location = player_locations
             .entry(player.to_string())
             .or_insert_with(|| {
@@ -225,4 +222,59 @@ fn remove_player_from_entities(site_entities: &mut Vec<SiteEntity>, player: &str
     if let Some(index) = player_pos(site_entities, player) {
         site_entities.remove(index);
     }
+}
+
+#[allow(clippy::option_if_let_else)]
+fn cleanup_entities(
+    statics: &Statics,
+    before: &[SiteEntity],
+    player_ships: &mut HashMap<player::Identifier, Ship>,
+) -> anyhow::Result<Vec<SiteEntity>> {
+    let mut remaining = Vec::new();
+    for entity in before {
+        match entity {
+            SiteEntity::Facility(_) => {
+                remaining.push(entity.clone());
+            }
+            SiteEntity::Lifeless(l) => {
+                if l.status.is_alive() {
+                    remaining.push(entity.clone());
+                }
+            }
+            SiteEntity::Npc(npc) => {
+                if let Some(status) = npc.ship.status.min_layout(statics, &npc.ship.fitting) {
+                    if status.is_alive() {
+                        remaining.push(SiteEntity::Npc(Npc {
+                            faction: npc.faction,
+                            ship: Ship {
+                                fitting: npc.ship.fitting.clone(),
+                                status,
+                            },
+                        }));
+                    }
+                }
+            }
+            SiteEntity::Player(p) => {
+                let ship = player_ships
+                    .get_mut(&p.id)
+                    .expect("player has to be in player_ships");
+                ship.status = if let Some(status) = ship.status.min_layout(statics, &ship.fitting) {
+                    if status.is_alive() {
+                        remaining.push(entity.clone());
+                    }
+                    status
+                } else {
+                    Status {
+                        capacitor: 0,
+                        hitpoints_armor: 0,
+                        hitpoints_structure: 0,
+                    }
+                };
+
+                // TODO: when dead: location isnt site anymore
+                // TODO: when dead: ship is default now
+            }
+        }
+    }
+    Ok(remaining)
 }

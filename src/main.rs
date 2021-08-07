@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use math::ship::calc_max;
 use persist::player::{read_player_ship, read_station_assets};
 use tide::http::mime;
 use tide::utils::After;
@@ -9,7 +8,7 @@ use tide::{Request, Response, StatusCode};
 use typings::fixed::{solarsystem, Statics};
 use typings::frontrw::instruction::Instruction;
 use typings::persist::player_location::PlayerLocation;
-use typings::persist::ship::{Fitting, Ship};
+use typings::persist::ship::Ship;
 use typings::persist::site;
 
 use crate::persist::player::{
@@ -114,10 +113,7 @@ async fn player_ship(req: Request<()>) -> tide::Result {
     let body = if let Ok(ship) = read_player_ship(&player) {
         ship
     } else {
-        Ship {
-            fitting: Fitting::default(),
-            status: calc_max(&Statics::default(), &Fitting::default())?,
-        }
+        Ship::default(&Statics::default())
     };
     tide_json_response(&body)
 }
