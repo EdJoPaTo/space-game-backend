@@ -1,5 +1,6 @@
 use anyhow::Result;
 use typings::fixed::solarsystem;
+use typings::frontrw::instruction::Instruction;
 use typings::persist::player;
 use typings::persist::player_assets::PlayerStationAssets;
 use typings::persist::player_location::PlayerLocation;
@@ -25,6 +26,9 @@ fn filename_player_ship(player: &str) -> String {
 }
 fn filename_players_in_warp(solarsystem: solarsystem::Identifier, site_unique: &str) -> String {
     format!("persist/warp-towards/{}/{}.yaml", solarsystem, site_unique)
+}
+fn filename_instructions(player: &str) -> String {
+    format!("persist/player-instructions/{}.yaml", player)
 }
 
 pub fn read_station_assets(
@@ -96,4 +100,11 @@ pub fn bodge_find_player_in_warp(
         }
     }
     Err(anyhow::anyhow!("whatever"))
+}
+
+pub fn read_player_instructions(player: &str) -> Vec<Instruction> {
+    read(&filename_instructions(player)).unwrap_or_default()
+}
+pub fn write_player_instructions(player: &str, instructions: &[Instruction]) -> Result<()> {
+    write(&filename_instructions(player), &instructions)
 }
