@@ -36,7 +36,7 @@ pub fn advance(
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let instructions = sorted_instructions(instructions);
+    let instructions = super::instructions::sort(instructions);
 
     // First collect all module effects
     let mut effects: HashMap<usize, Vec<Effect>> = HashMap::new();
@@ -219,56 +219,4 @@ fn remove_player_from_entities(site_entities: &mut Vec<SiteEntity>, player: &str
     if let Some(index) = player_pos(site_entities, player) {
         site_entities.remove(index);
     }
-}
-
-fn sorted_instructions(
-    instructions: &HashMap<player::Identifier, Vec<Instruction>>,
-) -> Vec<(player::Identifier, Instruction)> {
-    let mut result: Vec<(player::Identifier, Instruction)> = Vec::new();
-    for (player, instructions) in instructions {
-        for instruction in instructions {
-            result.push((player.to_string(), instruction.clone()));
-        }
-    }
-    result.sort_by(|a, b| a.1.cmp(&b.1));
-    result
-}
-
-#[test]
-fn sorted_works() {
-    let mut example = HashMap::new();
-    example.insert(
-        "player1".to_string(),
-        vec![
-            Instruction::Undock,
-            Instruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 }),
-        ],
-    );
-    example.insert(
-        "player2".to_string(),
-        vec![Instruction::ModuleTargeted(ModuleTargeted {
-            module_index: 0,
-            target_index_in_site: 0,
-        })],
-    );
-    let sorted = sorted_instructions(&example);
-    assert_eq!(sorted.len(), 3);
-    assert_eq!(
-        sorted[0],
-        (
-            "player1".to_string(),
-            Instruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 })
-        )
-    );
-    assert_eq!(
-        sorted[1],
-        (
-            "player2".to_string(),
-            Instruction::ModuleTargeted(ModuleTargeted {
-                module_index: 0,
-                target_index_in_site: 0,
-            })
-        )
-    );
-    assert_eq!(sorted[2], ("player1".to_string(), Instruction::Undock));
 }
