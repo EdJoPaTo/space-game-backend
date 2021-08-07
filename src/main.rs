@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use math::ship::calc_max;
 use persist::player::{read_player_ship, read_station_assets};
 use tide::http::mime;
 use tide::utils::After;
@@ -116,7 +117,10 @@ async fn player_ship(req: Request<()>) -> tide::Result {
     } else {
         Ship {
             fitting: Fitting::default(),
-            status: default_status(),
+            status: calc_max(
+                &Statics::import_yaml("../typings/static")?,
+                &Fitting::default(),
+            )?,
         }
     };
     tide_json_response(&body)
@@ -150,14 +154,6 @@ async fn station_assets(req: Request<()>) -> tide::Result {
     let station = req.param("station")?.parse()?;
     let body = read_station_assets(&player, solarsystem, station);
     tide_json_response(&body)
-}
-
-fn default_status() -> typings::persist::ship::Status {
-    typings::persist::ship::Status {
-        capacitor: 40,
-        hitpoints_armor: 20,
-        hitpoints_structure: 10,
-    }
 }
 
 #[allow(clippy::unused_async)]
@@ -196,7 +192,7 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
 
     let ship = read_player_ship(&player).unwrap_or_else(|_| Ship {
         fitting: Fitting::default(),
-        status: default_status(),
+        status: calc_max(&statics, &Fitting::default()).unwrap(),
     });
     let mut player_ships = HashMap::new();
     player_ships.insert(player.to_string(), ship);
