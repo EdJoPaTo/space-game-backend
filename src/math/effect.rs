@@ -3,7 +3,7 @@
 use typings::fixed::module::Effect;
 use typings::persist::ship::Status;
 
-fn apply_damage(status: &mut Status, damage: u32) {
+fn apply_damage(status: &mut Status, damage: u16) {
     let mut dmg_remaining = damage;
 
     let armor_dmg = status.hitpoints_armor.min(dmg_remaining);
@@ -23,12 +23,12 @@ pub fn apply_to_status(before: &Status, max: &Status, effect: &Effect) -> Status
 
     match effect {
         Effect::Capacitor(amount) => {
-            let before = before.capacitor as i64;
+            let before = before.capacitor as i32;
             let after = before
-                .saturating_add(*amount as i64)
+                .saturating_add(*amount as i32)
                 .max(0)
-                .min(max.capacitor as i64);
-            result.capacitor = after as u32;
+                .min(max.capacitor as i32);
+            result.capacitor = after as u16;
         }
         Effect::ArmorRepair(amount) => {
             result.hitpoints_armor = before
