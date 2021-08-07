@@ -12,31 +12,31 @@ use super::{read, write};
 // TODO: mutex on solarsystem for read and write access
 // read needs probably public and private methods to prevent deadlock?
 
-fn filename_site_entries(solarsystem: solarsystem::Identifier, site_unique: &str) -> String {
-    format!("persist/site-entries/{}/{}.yaml", solarsystem, site_unique)
+fn filename_site_entities(solarsystem: solarsystem::Identifier, site_unique: &str) -> String {
+    format!("persist/site-entities/{}/{}.yaml", solarsystem, site_unique)
 }
 
 fn filename_sites(solarsystem: solarsystem::Identifier) -> String {
     format!("persist/sites/{}.yaml", solarsystem)
 }
 
-pub fn read_site_entries(
+pub fn read_site_entities(
     solarsystem: solarsystem::Identifier,
     site_unique: &str,
 ) -> Result<Vec<SiteEntity>> {
-    read(&filename_site_entries(solarsystem, site_unique))
+    read(&filename_site_entities(solarsystem, site_unique))
 }
 
 pub fn read_sites(solarsystem: solarsystem::Identifier) -> Result<SitesNearPlanet> {
     read(&filename_sites(solarsystem))
 }
 
-pub fn write_site_entries(
+pub fn write_site_entities(
     solarsystem: solarsystem::Identifier,
     site_unique: &str,
-    entries: &[SiteEntity],
+    entities: &[SiteEntity],
 ) -> Result<()> {
-    write(&filename_site_entries(solarsystem, site_unique), &entries)
+    write(&filename_site_entities(solarsystem, site_unique), &entities)
 }
 
 fn write_sites(solarsystem: solarsystem::Identifier, sites: &SitesNearPlanet) -> Result<()> {
@@ -59,9 +59,9 @@ pub fn add(
     solarsystem: solarsystem::Identifier,
     planet: u8,
     site: Info,
-    entries: &[SiteEntity],
+    entities: &[SiteEntity],
 ) -> Result<()> {
-    write_site_entries(solarsystem, &site.site_unique, entries)?;
+    write_site_entities(solarsystem, &site.site_unique, entities)?;
 
     let mut sites = read_sites(solarsystem)?;
     sites.entry(planet).or_default().push(site);
@@ -79,8 +79,8 @@ pub fn remove(solarsystem: solarsystem::Identifier, site_unique: &str) -> Result
 }
 
 fn position_of_site_unique(sites: &SitesNearPlanet, unique: &str) -> Option<(u8, usize)> {
-    for (planet, entries) in sites {
-        if let Some(position) = entries.iter().position(|o| o.site_unique == unique) {
+    for (planet, site_info) in sites {
+        if let Some(position) = site_info.iter().position(|o| o.site_unique == unique) {
             return Some((planet.to_owned(), position));
         }
     }
@@ -108,7 +108,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             let site_unique = format!("stargate{}", target);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entries(*solarsystem, &site_unique)
+            let mut entities = read_site_entities(*solarsystem, &site_unique)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, SiteEntity::Facility(_) | SiteEntity::Npc(_)))
@@ -123,7 +123,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                     id: facility::Identifier::Stargate,
                 }),
             );
-            write_site_entries(*solarsystem, &site_unique, &entities)?;
+            write_site_entities(*solarsystem, &site_unique, &entities)?;
 
             sites.entry(*planet).or_default().insert(
                 0,
@@ -142,7 +142,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             let site_unique = format!("station{}", number);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entries(*solarsystem, &site_unique)
+            let mut entities = read_site_entities(*solarsystem, &site_unique)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, SiteEntity::Facility(_) | SiteEntity::Npc(_)))
@@ -157,7 +157,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                     id: facility::Identifier::Station,
                 }),
             );
-            write_site_entries(*solarsystem, &site_unique, &entities)?;
+            write_site_entities(*solarsystem, &site_unique, &entities)?;
 
             sites.entry(planet).or_default().insert(
                 0,

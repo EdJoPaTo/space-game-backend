@@ -28,7 +28,7 @@ pub fn advance(
     statics: &Statics,
     site_identifier: &site::Identifier,
     site_entities: &mut Vec<SiteEntity>,
-    instructions: &HashMap<player::Identifier, Vec<Instruction>>,
+    instructions: &mut HashMap<player::Identifier, Vec<Instruction>>,
     player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
     player_ships: &mut HashMap<player::Identifier, Ship>,
     players_warping_in: &[player::Identifier],
@@ -36,11 +36,11 @@ pub fn advance(
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let instructions = super::instructions::sort(instructions);
+    let sorted_instructions = super::instructions::sort(instructions);
 
     // First collect all module effects
     let mut effects: HashMap<usize, Vec<Effect>> = HashMap::new();
-    for (player, instruction) in &instructions {
+    for (player, instruction) in &sorted_instructions {
         match instruction {
             Instruction::ModuleUntargeted(module) => {
                 let origin_site_index =
@@ -117,7 +117,7 @@ pub fn advance(
     }
 
     // Finally do movements
-    for (player, instruction) in &instructions {
+    for (player, instruction) in &sorted_instructions {
         let location = player_locations
             .entry(player.to_string())
             .or_insert_with(|| {
@@ -204,6 +204,12 @@ pub fn advance(
                 site_unique: site_identifier.site_unique.to_string(),
             }),
         );
+    }
+
+    // Clear instructions
+    // TODO: keep something like warp
+    for (_player, instructions) in instructions.iter_mut() {
+        instructions.clear();
     }
 
     Ok(())

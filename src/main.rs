@@ -12,13 +12,12 @@ use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site;
 
-use crate::math::round::advance;
 use crate::persist::player::{
-    bodge_find_player_in_warp, pop_players_in_warp, read_player_location, write_player_location,
-    write_player_ship,
+    bodge_find_player_in_warp, read_player_location, write_player_instructions,
 };
-use crate::persist::site::{read_site_entries, read_sites, write_site_entries};
+use crate::persist::site::{read_site_entities, read_sites};
 
+mod gameloop;
 mod math;
 mod persist;
 
@@ -131,7 +130,7 @@ async fn site_entities(req: Request<()>) -> tide::Result {
     let solarsystem = req.param("solarsystem")?.parse()?;
     let unique = req.param("unique")?.to_string();
     let body: Vec<typings::frontread::site_entity::SiteEntity> =
-        read_site_entries(solarsystem, &unique)
+        read_site_entities(solarsystem, &unique)
             .map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?
             .iter()
             .map(|o| o.into())
@@ -161,14 +160,14 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
     let instructions = req.body_json::<Vec<Instruction>>().await?;
 
-    let measure = Instant::now();
-
     println!(
         "Instructions for player {} ({}): {:?}",
         player,
         instructions.len(),
         instructions
     );
+
+    write_player_instructions(&player, &instructions)?;
 
     let statics = Statics::import_yaml("../typings/static")?;
     let location = read_player_location(&player).unwrap_or_else(|_| {
@@ -178,8 +177,6 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
                 .site_unique,
         })
     });
-    let mut player_locations = HashMap::new();
-    player_locations.insert(player.to_string(), location.clone());
     let solarsystem = location.solarsystem();
 
     let site_unique = match location {
@@ -188,41 +185,15 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
         PlayerLocation::Station(_) => site::Info::generate_station(solarsystem, 0).site_unique,
     };
 
-    let mut site_entities = read_site_entries(solarsystem, &site_unique).unwrap_or_default();
-
-    let ship = read_player_ship(&player).unwrap_or_else(|_| Ship {
-        fitting: Fitting::default(),
-        status: calc_max(&statics, &Fitting::default()).unwrap(),
-    });
-    let mut player_ships = HashMap::new();
-    player_ships.insert(player.to_string(), ship);
-
     let mut player_instructions = HashMap::new();
     player_instructions.insert(player.to_string(), instructions);
 
-    let players_warping_in = pop_players_in_warp(solarsystem, &site_unique);
-
-    advance(
+    gameloop::site::handle(
         &statics,
         &(site::Identifier {
             solarsystem,
-            site_unique: site_unique.to_string(),
+            site_unique,
         }),
-        &mut site_entities,
-        &player_instructions,
-        &mut player_locations,
-        &mut player_ships,
-        &players_warping_in,
     )?;
-
-    write_site_entries(solarsystem, &site_unique, &site_entities)?;
-    for (player, ship) in player_ships {
-        write_player_ship(&player, &ship)?;
-    }
-    for (player, location) in player_locations {
-        write_player_location(&player, &location)?;
-    }
-
-    println!("  instructions took {:?}", measure.elapsed());
     Ok(Response::builder(StatusCode::Ok).build())
 }
