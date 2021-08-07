@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     let app = {
         println!("load static data...");
         let measure = Instant::now();
-        let statics = Statics::import_yaml("../typings/static").unwrap();
+        let statics = Statics::default();
         println!("  took {:?}", measure.elapsed());
 
         println!("init persist...");
@@ -116,10 +116,7 @@ async fn player_ship(req: Request<()>) -> tide::Result {
     } else {
         Ship {
             fitting: Fitting::default(),
-            status: calc_max(
-                &Statics::import_yaml("../typings/static")?,
-                &Fitting::default(),
-            )?,
+            status: calc_max(&Statics::default(), &Fitting::default())?,
         }
     };
     tide_json_response(&body)
@@ -169,7 +166,7 @@ async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
 
     write_player_instructions(&player, &instructions)?;
 
-    let statics = Statics::import_yaml("../typings/static")?;
+    let statics = Statics::default();
     let location = read_player_location(&player).unwrap_or_else(|_| {
         PlayerLocation::Site(site::Identifier {
             solarsystem: solarsystem::Identifier::default(),

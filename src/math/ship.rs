@@ -29,7 +29,7 @@ pub fn calc_max(statics: &Statics, fitting: &Fitting) -> anyhow::Result<Status> 
 
 #[test]
 fn without_modules_works() -> anyhow::Result<()> {
-    let statics = super::get_statics();
+    let statics = Statics::default();
     let expected = statics.ship_layouts.get("shiplayoutFrigate").unwrap();
     let fitting = Fitting {
         layout: "shiplayoutFrigate".to_string(),
@@ -51,7 +51,7 @@ fn without_modules_works() -> anyhow::Result<()> {
 
 #[test]
 fn default_fitting_works() -> anyhow::Result<()> {
-    let statics = super::get_statics();
+    let statics = Statics::default();
     let fitting = Fitting::default();
     let expected_layout = statics.ship_layouts.get(&fitting.layout).unwrap();
     let expected_passive = statics
