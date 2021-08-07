@@ -20,8 +20,10 @@ use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
 use crate::math::effect::apply_to_status;
-// TODO: has to be argument or return value
-use crate::persist::player::add_player_in_warp;
+
+pub struct Outputs {
+    pub warp_out: Vec<(solarsystem::Identifier, String, player::Identifier)>,
+}
 
 pub fn advance(
     statics: &Statics,
@@ -31,9 +33,11 @@ pub fn advance(
     player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
     player_ships: &mut HashMap<player::Identifier, Ship>,
     players_warping_in: &[player::Identifier],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Outputs> {
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
+
+    let mut warp_out = Vec::new();
 
     let sorted_instructions = super::instructions::sort(instructions);
 
@@ -161,11 +165,11 @@ pub fn advance(
                         *location = PlayerLocation::Warp(Warp {
                             solarsystem: target_solarsystem,
                         });
-                        add_player_in_warp(
+                        warp_out.push((
                             target_solarsystem,
-                            &target_site.site_unique,
+                            target_site.site_unique,
                             player.to_string(),
-                        )?;
+                        ));
                     }
                 }
             }
@@ -174,11 +178,11 @@ pub fn advance(
                 *location = PlayerLocation::Warp(Warp {
                     solarsystem: site_identifier.solarsystem,
                 });
-                add_player_in_warp(
+                warp_out.push((
                     site_identifier.solarsystem,
-                    &warp.site_unique,
+                    warp.site_unique.to_string(),
                     player.to_string(),
-                )?;
+                ));
             }
         }
     }
@@ -209,7 +213,7 @@ pub fn advance(
         instructions.clear();
     }
 
-    Ok(())
+    Ok(Outputs { warp_out })
 }
 
 fn player_pos(site_entities: &[SiteEntity], player: &str) -> Option<usize> {

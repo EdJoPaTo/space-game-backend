@@ -7,8 +7,8 @@ use typings::persist::site_entity::SiteEntity;
 
 use crate::math::round::advance;
 use crate::persist::player::{
-    pop_players_in_warp, read_player_instructions, read_player_location, read_player_ship,
-    write_player_instructions, write_player_location, write_player_ship,
+    add_player_in_warp, pop_players_in_warp, read_player_instructions, read_player_location,
+    read_player_ship, write_player_instructions, write_player_location, write_player_ship,
 };
 use crate::persist::site::{read_site_entities, write_site_entities};
 
@@ -61,7 +61,7 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
     let measure_load = measure.elapsed();
     measure = Instant::now();
 
-    advance(
+    let outputs = advance(
         statics,
         site_identifier,
         &mut site_entities,
@@ -83,6 +83,9 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
     }
     for (player, location) in &player_locations {
         write_player_location(player, location)?;
+    }
+    for (solarsystem, site_unique, player) in outputs.warp_out {
+        add_player_in_warp(solarsystem, &site_unique, player)?;
     }
 
     let measure_save = measure.elapsed();
