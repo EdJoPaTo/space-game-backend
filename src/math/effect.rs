@@ -19,7 +19,7 @@ fn apply_damage(status: &mut Status, damage: u16) {
     clippy::cast_possible_truncation
 )]
 /// Doesnt care about whats possible with a given ship!
-pub fn apply_to_status(before: &Status, effects: &[Effect]) -> Status {
+pub fn apply_to_status(before: Status, effects: &[Effect]) -> Status {
     let mut capacitor = before.capacitor as i32;
     let mut armor = before.hitpoints_armor;
     let mut damage_sum: u16 = 0;

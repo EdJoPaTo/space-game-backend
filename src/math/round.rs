@@ -54,10 +54,7 @@ pub fn advance(
                     .and_then(|o| statics.modules_untargeted.get(o))
                 {
                     for effect in &module.effects {
-                        effects
-                            .entry(origin_site_index)
-                            .or_default()
-                            .push(effect.clone());
+                        effects.entry(origin_site_index).or_default().push(*effect);
                     }
                 } else {
                     println!("WARN: player untargeted module not handled {:?}", module);
@@ -73,16 +70,10 @@ pub fn advance(
                     .and_then(|o| statics.modules_targeted.get(o))
                 {
                     for effect in &module.effects_origin {
-                        effects
-                            .entry(origin_site_index)
-                            .or_default()
-                            .push(effect.clone());
+                        effects.entry(origin_site_index).or_default().push(*effect);
                     }
                     for effect in &module.effects_target {
-                        effects
-                            .entry(target_site_index)
-                            .or_default()
-                            .push(effect.clone());
+                        effects.entry(target_site_index).or_default().push(*effect);
                     }
                 } else {
                     println!("WARN: player targeted module not handled {:?}", module);
@@ -101,13 +92,13 @@ pub fn advance(
             match entity {
                 SiteEntity::Facility(_) | SiteEntity::Lifeless(_) => { /* Currently immune */ }
                 SiteEntity::Npc(npc) => {
-                    npc.ship.status = apply_to_status(&npc.ship.status, &effects);
+                    npc.ship.status = apply_to_status(npc.ship.status, &effects);
                 }
                 SiteEntity::Player(player) => {
                     let ship = player_ships
                         .get_mut(&player.id)
                         .expect("player has to be in player_ships");
-                    ship.status = apply_to_status(&ship.status, &effects);
+                    ship.status = apply_to_status(ship.status, &effects);
                 }
             }
         }
