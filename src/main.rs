@@ -4,10 +4,9 @@ use persist::player::{read_player_ship, read_station_assets};
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
-use typings::fixed::{solarsystem, Statics};
+use typings::fixed::Statics;
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::frontrw::station_instruction::StationInstruction;
-use typings::persist::player_location::{PlayerLocation, Station};
 
 use crate::persist::player::{read_player_location, write_player_site_instructions};
 use crate::persist::site::{read_site_entities, read_sites};
@@ -99,19 +98,14 @@ where
 #[allow(clippy::unused_async)]
 async fn player_location(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
-    let body = read_player_location(&player).unwrap_or_else(|_| {
-        PlayerLocation::Station(Station {
-            solarsystem: solarsystem::Identifier::default(),
-            station: 0,
-        })
-    });
+    let body = read_player_location(&player);
     tide_json_response(&body)
 }
 
 #[allow(clippy::unused_async)]
 async fn player_ship(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
-    let body = read_player_ship(&player).unwrap_or_default();
+    let body = read_player_ship(&player);
     tide_json_response(&body)
 }
 

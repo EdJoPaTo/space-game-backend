@@ -9,7 +9,15 @@ mod ensure_player_locations;
 pub mod player;
 pub mod site;
 
-fn read<P: AsRef<Path>, T>(file: P) -> anyhow::Result<T>
+fn read<P: AsRef<Path>, T>(file: P) -> T
+where
+    T: serde::de::DeserializeOwned + Default,
+{
+    let content = fs::read_to_string(file).unwrap_or_default();
+    serde_yaml::from_str(&content).unwrap_or_default()
+}
+
+fn read_meh<P: AsRef<Path>, T>(file: P) -> anyhow::Result<T>
 where
     T: serde::de::DeserializeOwned,
 {
@@ -19,9 +27,13 @@ where
 
 fn write<P: AsRef<Path>, T>(file: P, value: &T) -> anyhow::Result<()>
 where
-    T: serde::Serialize,
+    T: serde::Serialize + Default + std::cmp::PartialEq,
 {
-    write_str(file.as_ref(), &serde_yaml::to_string(value)?)?;
+    if value == &T::default() {
+        delete(file)?;
+    } else {
+        write_str(file.as_ref(), &serde_yaml::to_string(value)?)?;
+    }
     Ok(())
 }
 
@@ -33,9 +45,10 @@ fn write_str(file: &Path, new_content: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn delete(filename: &str) -> std::io::Result<()> {
-    if Path::new(filename).exists() {
-        fs::remove_file(filename)?;
+fn delete<P: AsRef<Path>>(file: P) -> std::io::Result<()> {
+    let file = file.as_ref();
+    if file.exists() {
+        fs::remove_file(file)?;
     }
     Ok(())
 }

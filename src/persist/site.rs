@@ -7,7 +7,7 @@ use typings::persist::ship::{Fitting, Status};
 use typings::persist::site::{Info, SitesNearPlanet};
 use typings::persist::site_entity::{Facility, Npc, SiteEntity};
 
-use super::{read, write};
+use super::{read_meh, write};
 
 // TODO: mutex on solarsystem for read and write access
 // read needs probably public and private methods to prevent deadlock?
@@ -24,11 +24,11 @@ pub fn read_site_entities(
     solarsystem: solarsystem::Identifier,
     site_unique: &str,
 ) -> Result<Vec<SiteEntity>> {
-    read(&filename_site_entities(solarsystem, site_unique))
+    read_meh(&filename_site_entities(solarsystem, site_unique))
 }
 
 pub fn read_sites(solarsystem: solarsystem::Identifier) -> Result<SitesNearPlanet> {
-    read(&filename_sites(solarsystem))
+    read_meh(&filename_sites(solarsystem))
 }
 pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(solarsystem::Identifier, Info)> {
     let mut result = Vec::new();

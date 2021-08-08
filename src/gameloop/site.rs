@@ -84,9 +84,9 @@ fn handle(
     let mut player_locations = HashMap::new();
 
     for player in all_players_involved {
-        let ship = read_player_ship(player)?;
+        let ship = read_player_ship(player);
         player_ships.insert(player.to_string(), ship);
-        let location = read_player_location(player)?;
+        let location = read_player_location(player);
         player_locations.insert(player.to_string(), location);
     }
 

@@ -33,7 +33,7 @@ pub fn read_station_assets(
     solarsystem: solarsystem::Identifier,
     station: u8,
 ) -> PlayerStationAssets {
-    read(&filename_station_assets(player, solarsystem, station)).unwrap_or_default()
+    read(&filename_station_assets(player, solarsystem, station))
 }
 pub fn write_station_assets(
     player: &str,
@@ -47,7 +47,7 @@ pub fn write_station_assets(
     )
 }
 
-pub fn read_player_location(player: &str) -> Result<PlayerLocation> {
+pub fn read_player_location(player: &str) -> PlayerLocation {
     read(&filename_player_location(player))
 }
 pub fn write_player_location(player: &str, location: &PlayerLocation) -> Result<()> {
@@ -61,13 +61,13 @@ pub fn read_all_player_locations() -> Vec<(player::Identifier, PlayerLocation)> 
         .filter_map(std::ffi::OsStr::to_str);
     let mut result = Vec::new();
     for player in list {
-        let location = read_player_location(player).unwrap();
+        let location = read_player_location(player);
         result.push((player.to_string(), location));
     }
     result
 }
 
-pub fn read_player_ship(player: &str) -> Result<Ship> {
+pub fn read_player_ship(player: &str) -> Ship {
     read(&filename_player_ship(player))
 }
 pub fn write_player_ship(player: &str, ship: &Ship) -> Result<()> {
@@ -75,7 +75,7 @@ pub fn write_player_ship(player: &str, ship: &Ship) -> Result<()> {
 }
 
 pub fn read_player_site_instructions(player: &str) -> Vec<SiteInstruction> {
-    read(&filename_instructions(player)).unwrap_or_default()
+    read(&filename_instructions(player))
 }
 pub fn write_player_site_instructions(
     player: &str,

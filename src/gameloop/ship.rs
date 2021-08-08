@@ -10,19 +10,18 @@ use crate::persist::player::{
 /// If dead → reset location and ship.
 pub fn all() -> anyhow::Result<()> {
     for (player, _location) in read_all_player_locations() {
-        if let Ok(ship) = read_player_ship(&player) {
-            if !ship.status.is_alive() {
-                eprintln!("player is dead {} {:?}", player, ship);
-                // TODO: use home station
-                write_player_location(
-                    &player,
-                    &PlayerLocation::Station(Station {
-                        solarsystem: solarsystem::Identifier::default(),
-                        station: 0,
-                    }),
-                )?;
-                write_player_ship(&player, &Ship::default())?;
-            }
+        let ship = read_player_ship(&player);
+        if !ship.status.is_alive() {
+            eprintln!("player is dead {} {:?}", player, ship);
+            // TODO: use home station
+            write_player_location(
+                &player,
+                &PlayerLocation::Station(Station {
+                    solarsystem: solarsystem::Identifier::default(),
+                    station: 0,
+                }),
+            )?;
+            write_player_ship(&player, &Ship::default())?;
         }
     }
     Ok(())

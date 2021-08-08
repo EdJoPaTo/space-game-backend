@@ -36,8 +36,7 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
                         .any(|o| matches!(o, SiteEntity::Player(p) if &p.id == player));
                     if !site_knows {
                         eprintln!("ensure_player_locations player expected to be in site but site didnt knew: {} {} {:?}", player, solarsystem, site_info);
-                        let player_ship = read_player_ship(player).unwrap_or_default();
-
+                        let player_ship = read_player_ship(player);
                         entities.push(SiteEntity::Player(Player {
                             id: player.to_string(),
                             shiplayout: player_ship.fitting.layout,
