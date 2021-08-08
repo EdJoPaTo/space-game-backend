@@ -34,6 +34,14 @@ pub fn advance(
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
     let sorted_instructions = super::instructions::sort(instructions);
+    if !sorted_instructions.is_empty() {
+        println!(
+            "site::handle {:>15} {:20} {:?}",
+            solarsystem.to_string(),
+            site_info.site_unique,
+            sorted_instructions
+        );
+    }
 
     // First collect all module effects
     let mut effects: HashMap<usize, Vec<Effect>> = HashMap::new();
