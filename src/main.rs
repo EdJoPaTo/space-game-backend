@@ -7,8 +7,7 @@ use tide::{Request, Response, StatusCode};
 use typings::fixed::{solarsystem, Statics};
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::frontrw::station_instruction::StationInstruction;
-use typings::persist::player_location::PlayerLocation;
-use typings::persist::site;
+use typings::persist::player_location::{PlayerLocation, Station};
 
 use crate::persist::player::{read_player_location, write_player_site_instructions};
 use crate::persist::site::{read_site_entities, read_sites};
@@ -100,15 +99,12 @@ where
 #[allow(clippy::unused_async)]
 async fn player_location(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
-    let body = if let Ok(location) = read_player_location(&player) {
-        location
-    } else {
-        PlayerLocation::Site(site::Identifier {
+    let body = read_player_location(&player).unwrap_or_else(|_| {
+        PlayerLocation::Station(Station {
             solarsystem: solarsystem::Identifier::default(),
-            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0)
-                .site_unique,
+            station: 0,
         })
-    };
+    });
     tide_json_response(&body)
 }
 

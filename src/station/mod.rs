@@ -1,6 +1,6 @@
 use typings::fixed::{solarsystem, Statics};
 use typings::frontrw::station_instruction::StationInstruction;
-use typings::persist::player_location::PlayerLocation;
+use typings::persist::player_location::{PlayerLocation, Station};
 use typings::persist::ship::Status;
 use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Player, SiteEntity};
@@ -15,7 +15,12 @@ pub fn do_instructions(
     player: &str,
     instructions: &[StationInstruction],
 ) -> anyhow::Result<()> {
-    let location = read_player_location(player)?;
+    let location = read_player_location(player).unwrap_or_else(|_| {
+        PlayerLocation::Station(Station {
+            solarsystem: solarsystem::Identifier::default(),
+            station: 0,
+        })
+    });
     let solarsystem = location.solarsystem();
     let station = match location {
         PlayerLocation::Station(s) => s.station,
