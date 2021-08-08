@@ -15,17 +15,24 @@ use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site
 pub fn all(statics: &Statics) -> anyhow::Result<()> {
     let mut some_error = false;
 
-    let players_in_warp = read_all_player_locations()
-        .iter()
-        .filter_map(|o| match &o.1 {
-            PlayerLocation::Site(_) | PlayerLocation::Station(_) => None,
-            PlayerLocation::Warp(warp) => Some((
-                o.0.to_string(),
-                warp.solarsystem,
-                warp.towards_site_unique.to_string(),
-            )),
-        })
-        .collect::<Vec<_>>();
+    let mut players_in_warp = Vec::new();
+    let mut players_docked = Vec::new();
+    for (player, location) in read_all_player_locations() {
+        let solarsystem = location.solarsystem();
+        match location {
+            PlayerLocation::Site(_) => {}
+            PlayerLocation::Station(station) => {
+                players_docked.push((
+                    player,
+                    solarsystem,
+                    site::Info::generate_station(solarsystem, station.station).site_unique,
+                ));
+            }
+            PlayerLocation::Warp(warp) => {
+                players_in_warp.push((player, solarsystem, warp.towards_site_unique));
+            }
+        }
+    }
 
     for (solarsystem, site_info) in read_sites_everywhere(&statics.solarsystems) {
         let players_warping_in = players_in_warp
@@ -33,8 +40,19 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
             .filter(|o| o.1 == solarsystem && o.2 == site_info.site_unique)
             .map(|o| o.0.to_string())
             .collect::<Vec<_>>();
+        let players_docked = players_docked
+            .iter()
+            .filter(|o| o.1 == solarsystem && o.2 == site_info.site_unique)
+            .map(|o| o.0.to_string())
+            .collect::<Vec<_>>();
 
-        if let Err(err) = handle(statics, solarsystem, &site_info, &players_warping_in) {
+        if let Err(err) = handle(
+            statics,
+            solarsystem,
+            &site_info,
+            &players_warping_in,
+            &players_docked,
+        ) {
             some_error = true;
             eprintln!("ERROR gameloop::site::handle {}", err);
         }
@@ -51,6 +69,7 @@ fn handle(
     solarsystem: solarsystem::Identifier,
     site_info: &site::Info,
     players_warping_in: &[player::Identifier],
+    players_docked: &[player::Identifier],
 ) -> anyhow::Result<()> {
     let site_unique = &site_info.site_unique;
 
@@ -69,14 +88,15 @@ fn handle(
         players_in_site
             .iter()
             .chain(players_warping_in)
+            .chain(players_docked)
             .collect::<Vec<_>>()
     };
 
     let mut instructions = {
         let mut result = HashMap::new();
-        for player in &players_in_site {
+        for player in &all_players_involved {
             let instructions = read_player_instructions(player);
-            result.insert(player.to_string(), instructions);
+            result.insert((*player).to_string(), instructions);
         }
         result
     };

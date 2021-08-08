@@ -123,6 +123,15 @@ pub fn advance(
                 // Already handled
             }
             Instruction::Undock => {
+                site_entities.push(SiteEntity::Player(Player {
+                    id: player.to_string(),
+                    shiplayout: player_ships
+                        .get(player)
+                        .expect("player undocking also has to be in player_ships")
+                        .fitting
+                        .layout
+                        .to_string(),
+                }));
                 *location = PlayerLocation::Site(site::Identifier {
                     solarsystem,
                     site_unique: Info::generate_station(solarsystem, station).site_unique,
@@ -154,11 +163,13 @@ pub fn advance(
                 }
             }
             Instruction::Warp(warp) => {
-                remove_player_from_entities(site_entities, player);
-                *location = PlayerLocation::Warp(Warp {
-                    solarsystem,
-                    towards_site_unique: warp.site_unique.to_string(),
-                });
+                if warp.site_unique != site_info.site_unique {
+                    remove_player_from_entities(site_entities, player);
+                    *location = PlayerLocation::Warp(Warp {
+                        solarsystem,
+                        towards_site_unique: warp.site_unique.to_string(),
+                    });
+                }
             }
         }
     }
