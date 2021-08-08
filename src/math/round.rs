@@ -131,19 +131,24 @@ pub fn advance(
                 // Already handled
             }
             Instruction::Undock => {
-                site_entities.push(SiteEntity::Player(Player {
-                    id: player.to_string(),
-                    shiplayout: player_ships
-                        .get(player)
-                        .expect("player undocking also has to be in player_ships")
-                        .fitting
-                        .layout
-                        .to_string(),
-                }));
-                *location = PlayerLocation::Site(site::Identifier {
-                    solarsystem,
-                    site_unique: Info::generate_station(solarsystem, station).site_unique,
-                });
+                let ship = player_ships
+                    .get(player)
+                    .expect("player undocking also has to be in player_ships");
+                if ship.fitting.is_valid(statics) {
+                    site_entities.push(SiteEntity::Player(Player {
+                        id: player.to_string(),
+                        shiplayout: ship.fitting.layout.to_string(),
+                    }));
+                    *location = PlayerLocation::Site(site::Identifier {
+                        solarsystem,
+                        site_unique: Info::generate_station(solarsystem, station).site_unique,
+                    });
+                } else {
+                    eprintln!(
+                        "player tried to undock with invalid ship {} {:?}",
+                        player, ship
+                    );
+                }
             }
             Instruction::Facility(facility) => {
                 match facility.service {
