@@ -30,6 +30,16 @@ pub fn read_site_entities(
 pub fn read_sites(solarsystem: solarsystem::Identifier) -> Result<SitesNearPlanet> {
     read(&filename_sites(solarsystem))
 }
+pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(solarsystem::Identifier, Info)> {
+    let mut result = Vec::new();
+    for solarsystem in solarsystems.keys().copied() {
+        let sites = read_sites(solarsystem).expect("init at least created gate sites");
+        for site in sites.values().flatten() {
+            result.push((solarsystem, site.clone()));
+        }
+    }
+    result
+}
 
 pub fn write_site_entities(
     solarsystem: solarsystem::Identifier,

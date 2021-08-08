@@ -9,17 +9,14 @@ use crate::persist::player::{
     add_player_in_warp, pop_players_in_warp, read_player_instructions, read_player_location,
     read_player_ship, write_player_instructions, write_player_location, write_player_ship,
 };
-use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
+use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
 
 pub fn all(statics: &Statics) -> anyhow::Result<()> {
     let mut some_error = false;
-    for solarsystem in statics.solarsystems.keys().copied() {
-        let sites = read_sites(solarsystem).expect("init at least created gate sites");
-        for site_info in sites.values().flatten() {
-            if let Err(err) = handle(statics, solarsystem, site_info) {
-                some_error = true;
-                eprintln!("ERROR gameloop::site::handle {}", err);
-            }
+    for (solarsystem, site_info) in read_sites_everywhere(&statics.solarsystems) {
+        if let Err(err) = handle(statics, solarsystem, &site_info) {
+            some_error = true;
+            eprintln!("ERROR gameloop::site::handle {}", err);
         }
     }
     if some_error {
