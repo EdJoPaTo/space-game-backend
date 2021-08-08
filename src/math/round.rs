@@ -94,7 +94,7 @@ pub fn advance(
             match entity {
                 SiteEntity::Facility(_) | SiteEntity::Lifeless(_) => { /* Currently immune */ }
                 SiteEntity::Npc(npc) => {
-                    npc.ship.status = apply_to_status(npc.ship.status, &effects);
+                    npc.status = apply_to_status(npc.status, &effects);
                 }
                 SiteEntity::Player(player) => {
                     let ship = player_ships
@@ -241,14 +241,12 @@ fn cleanup_entities(
                 }
             }
             SiteEntity::Npc(npc) => {
-                if let Some(status) = npc.ship.status.min_layout(statics, &npc.ship.fitting) {
+                if let Some(status) = npc.status.min_layout(statics, &npc.fitting) {
                     if status.is_alive() {
                         remaining.push(SiteEntity::Npc(Npc {
                             faction: npc.faction,
-                            ship: Ship {
-                                fitting: npc.ship.fitting.clone(),
-                                status,
-                            },
+                            fitting: npc.fitting.clone(),
+                            status,
                         }));
                     }
                 }
