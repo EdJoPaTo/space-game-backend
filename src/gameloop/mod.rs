@@ -3,6 +3,7 @@ use std::time::Duration;
 use async_std::task::{sleep, spawn};
 use typings::fixed::Statics;
 
+mod ship;
 mod site;
 
 pub fn start(statics: &Statics) -> anyhow::Result<()> {
@@ -25,5 +26,6 @@ async fn do_loop() -> ! {
 
 fn once(statics: &Statics) -> anyhow::Result<()> {
     site::all(statics)?;
+    ship::all(statics)?;
     Ok(())
 }
