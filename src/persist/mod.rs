@@ -41,17 +41,15 @@ fn delete(filename: &str) -> std::io::Result<()> {
 }
 
 fn list<P: AsRef<Path>>(folder: P) -> Vec<PathBuf> {
-    let folder = folder.as_ref();
     let mut result = Vec::new();
-    for entry in fs::read_dir(folder)
-        .expect("failed to list files")
-        .filter_map(|o| o.ok())
-    {
-        if entry.path().is_dir() {
-            let mut children = list(entry.path());
-            result.append(&mut children);
-        } else {
-            result.push(entry.path().clone());
+    if let Ok(direntry) = fs::read_dir(folder) {
+        for entry in direntry.filter_map(|o| o.ok()) {
+            if entry.path().is_dir() {
+                let mut children = list(entry.path());
+                result.append(&mut children);
+            } else {
+                result.push(entry.path().clone());
+            }
         }
     }
     result
