@@ -18,9 +18,7 @@ use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
 use crate::math::effect::apply_to_status;
 
-pub struct Outputs {
-    pub warp_out: Vec<(solarsystem::Identifier, String, player::Identifier)>,
-}
+pub struct Outputs {}
 
 pub fn advance(
     statics: &Statics,
@@ -34,8 +32,6 @@ pub fn advance(
 ) -> anyhow::Result<Outputs> {
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
-
-    let mut warp_out = Vec::new();
 
     let sorted_instructions = super::instructions::sort(instructions);
 
@@ -152,23 +148,17 @@ pub fn advance(
                         remove_player_from_entities(site_entities, player);
                         *location = PlayerLocation::Warp(Warp {
                             solarsystem: target_solarsystem,
+                            towards_site_unique: target_site.site_unique,
                         });
-                        warp_out.push((
-                            target_solarsystem,
-                            target_site.site_unique,
-                            player.to_string(),
-                        ));
                     }
                 }
             }
             Instruction::Warp(warp) => {
                 remove_player_from_entities(site_entities, player);
-                *location = PlayerLocation::Warp(Warp { solarsystem });
-                warp_out.push((
+                *location = PlayerLocation::Warp(Warp {
                     solarsystem,
-                    warp.site_unique.to_string(),
-                    player.to_string(),
-                ));
+                    towards_site_unique: warp.site_unique.to_string(),
+                });
             }
         }
     }
@@ -199,7 +189,7 @@ pub fn advance(
         instructions.clear();
     }
 
-    Ok(Outputs { warp_out })
+    Ok(Outputs {})
 }
 
 fn player_pos(site_entities: &[SiteEntity], player: &str) -> Option<usize> {

@@ -6,7 +6,7 @@ use typings::persist::player_assets::PlayerStationAssets;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
 
-use super::{delete, list, read, write};
+use super::{list, read, write};
 
 fn filename_station_assets(
     player: &str,
@@ -23,9 +23,6 @@ fn filename_player_location(player: &str) -> String {
 }
 fn filename_player_ship(player: &str) -> String {
     format!("persist/player-ship/{}.yaml", player)
-}
-fn filename_players_in_warp(solarsystem: solarsystem::Identifier, site_unique: &str) -> String {
-    format!("persist/warp-towards/{}/{}.yaml", solarsystem, site_unique)
 }
 fn filename_instructions(player: &str) -> String {
     format!("persist/player-instructions/{}.yaml", player)
@@ -75,26 +72,6 @@ pub fn read_player_ship(player: &str) -> Result<Ship> {
 }
 pub fn write_player_ship(player: &str, ship: &Ship) -> Result<()> {
     write(&filename_player_ship(player), ship)
-}
-
-pub fn pop_players_in_warp(
-    solarsystem: solarsystem::Identifier,
-    site_unique: &str,
-) -> Vec<player::Identifier> {
-    let filename = filename_players_in_warp(solarsystem, site_unique);
-    let result = read(&filename).unwrap_or_default();
-    delete(&filename).expect("failed to delete players in warp file");
-    result
-}
-pub fn add_player_in_warp(
-    solarsystem: solarsystem::Identifier,
-    site_unique: &str,
-    player: player::Identifier,
-) -> Result<()> {
-    let filename = filename_players_in_warp(solarsystem, site_unique);
-    let mut list: Vec<player::Identifier> = read(&filename).unwrap_or_default();
-    list.push(player);
-    write(&filename, &list)
 }
 
 pub fn read_player_instructions(player: &str) -> Vec<Instruction> {

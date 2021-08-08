@@ -1,20 +1,40 @@
 use std::collections::HashMap;
 
 use typings::fixed::{solarsystem, Statics};
-use typings::persist::site;
+use typings::persist::player_location::PlayerLocation;
 use typings::persist::site_entity::SiteEntity;
+use typings::persist::{player, site};
 
 use crate::math::round::advance;
 use crate::persist::player::{
-    add_player_in_warp, pop_players_in_warp, read_player_instructions, read_player_location,
-    read_player_ship, write_player_instructions, write_player_location, write_player_ship,
+    read_all_player_locations, read_player_instructions, read_player_location, read_player_ship,
+    write_player_instructions, write_player_location, write_player_ship,
 };
 use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
 
 pub fn all(statics: &Statics) -> anyhow::Result<()> {
     let mut some_error = false;
+
+    let players_in_warp = read_all_player_locations()
+        .iter()
+        .filter_map(|o| match &o.1 {
+            PlayerLocation::Site(_) | PlayerLocation::Station(_) => None,
+            PlayerLocation::Warp(warp) => Some((
+                o.0.to_string(),
+                warp.solarsystem,
+                warp.towards_site_unique.to_string(),
+            )),
+        })
+        .collect::<Vec<_>>();
+
     for (solarsystem, site_info) in read_sites_everywhere(&statics.solarsystems) {
-        if let Err(err) = handle(statics, solarsystem, &site_info) {
+        let players_warping_in = players_in_warp
+            .iter()
+            .filter(|o| o.1 == solarsystem && o.2 == site_info.site_unique)
+            .map(|o| o.0.to_string())
+            .collect::<Vec<_>>();
+
+        if let Err(err) = handle(statics, solarsystem, &site_info, &players_warping_in) {
             some_error = true;
             eprintln!("ERROR gameloop::site::handle {}", err);
         }
@@ -26,10 +46,11 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
     }
 }
 
-pub fn handle(
+fn handle(
     statics: &Statics,
     solarsystem: solarsystem::Identifier,
     site_info: &site::Info,
+    players_warping_in: &[player::Identifier],
 ) -> anyhow::Result<()> {
     let site_unique = &site_info.site_unique;
 
@@ -44,11 +65,10 @@ pub fn handle(
         }
         result
     };
-    let players_warping_in = pop_players_in_warp(solarsystem, site_unique);
     let all_players_involved = {
         players_in_site
             .iter()
-            .chain(&players_warping_in)
+            .chain(players_warping_in)
             .collect::<Vec<_>>()
     };
 
@@ -71,7 +91,7 @@ pub fn handle(
         player_locations.insert(player.to_string(), location);
     }
 
-    let outputs = advance(
+    let _outputs = advance(
         statics,
         solarsystem,
         site_info,
@@ -79,7 +99,7 @@ pub fn handle(
         &mut instructions,
         &mut player_locations,
         &mut player_ships,
-        &players_warping_in,
+        players_warping_in,
     )?;
 
     // Nothing after this point is allowed to fail the rest -> Data has to be saved
@@ -109,12 +129,6 @@ pub fn handle(
         if let Err(err) = write_player_location(player, location) {
             some_error = true;
             eprintln!("{} write_player_location {} {}", error_prefix, player, err);
-        }
-    }
-    for (solarsystem, site_unique, player) in outputs.warp_out {
-        if let Err(err) = add_player_in_warp(solarsystem, &site_unique, player) {
-            some_error = true;
-            eprintln!("{} add_player_in_warp {}", error_prefix, err);
         }
     }
 
