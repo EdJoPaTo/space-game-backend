@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use typings::frontrw::instruction::Instruction;
+use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player;
 
 // TODO: allow for npc instructions to be added and sorted into the same ordered Vec<>
 
 pub fn sort(
-    instructions: &HashMap<player::Identifier, Vec<Instruction>>,
-) -> Vec<(player::Identifier, Instruction)> {
-    let mut result: Vec<(player::Identifier, Instruction)> = Vec::new();
+    instructions: &HashMap<player::Identifier, Vec<SiteInstruction>>,
+) -> Vec<(player::Identifier, SiteInstruction)> {
+    let mut result: Vec<(player::Identifier, SiteInstruction)> = Vec::new();
     for (player, instructions) in instructions {
         for instruction in instructions {
             result.push((player.to_string(), instruction.clone()));
@@ -19,7 +19,7 @@ pub fn sort(
 }
 
 #[cfg(test)]
-use typings::frontrw::instruction::{ModuleTargeted, ModuleUntargeted};
+use typings::frontrw::site_instruction::{ModuleTargeted, ModuleUntargeted, Warp};
 
 #[test]
 fn player_sorted_works() {
@@ -27,13 +27,15 @@ fn player_sorted_works() {
     example.insert(
         "player1".to_string(),
         vec![
-            Instruction::Undock,
-            Instruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 }),
+            SiteInstruction::Warp(Warp {
+                site_unique: "666".to_string(),
+            }),
+            SiteInstruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 }),
         ],
     );
     example.insert(
         "player2".to_string(),
-        vec![Instruction::ModuleTargeted(ModuleTargeted {
+        vec![SiteInstruction::ModuleTargeted(ModuleTargeted {
             module_index: 0,
             target_index_in_site: 0,
         })],
@@ -44,18 +46,26 @@ fn player_sorted_works() {
         sorted[0],
         (
             "player1".to_string(),
-            Instruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 })
+            SiteInstruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 })
         )
     );
     assert_eq!(
         sorted[1],
         (
             "player2".to_string(),
-            Instruction::ModuleTargeted(ModuleTargeted {
+            SiteInstruction::ModuleTargeted(ModuleTargeted {
                 module_index: 0,
                 target_index_in_site: 0,
             })
         )
     );
-    assert_eq!(sorted[2], ("player1".to_string(), Instruction::Undock));
+    assert_eq!(
+        sorted[2],
+        (
+            "player1".to_string(),
+            SiteInstruction::Warp(Warp {
+                site_unique: "666".to_string()
+            })
+        )
+    );
 }

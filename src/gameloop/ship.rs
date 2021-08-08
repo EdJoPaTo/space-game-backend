@@ -1,6 +1,6 @@
-use typings::fixed::{solarsystem, Statics};
+use typings::fixed::solarsystem;
 use typings::persist::player_location::{PlayerLocation, Station};
-use typings::persist::ship::{Ship, Status};
+use typings::persist::ship::Ship;
 
 use crate::persist::player::{
     read_all_player_locations, read_player_ship, write_player_location, write_player_ship,
@@ -8,10 +8,9 @@ use crate::persist::player::{
 
 /// Check all ships.
 /// If dead → reset location and ship.
-/// If station → fill status to max.
-pub fn all(statics: &Statics) -> anyhow::Result<()> {
-    for (player, location) in read_all_player_locations() {
-        if let Ok(mut ship) = read_player_ship(&player) {
+pub fn all() -> anyhow::Result<()> {
+    for (player, _location) in read_all_player_locations() {
+        if let Ok(ship) = read_player_ship(&player) {
             if !ship.status.is_alive() {
                 eprintln!("player is dead {} {:?}", player, ship);
                 // TODO: use home station
@@ -23,15 +22,6 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
                     }),
                 )?;
                 write_player_ship(&player, &Ship::default())?;
-            } else if matches!(location, PlayerLocation::Station(_)) {
-                if let Some(status) = Status::new(statics, &ship.fitting) {
-                    if ship.status != status {
-                        // TODO: station button "repair"
-                        eprintln!("repair player ship in station {}", player);
-                        ship.status = status;
-                        write_player_ship(&player, &ship)?;
-                    }
-                }
             }
         }
     }

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use typings::fixed::facility::Service;
 use typings::fixed::module::Effect;
 use typings::fixed::{solarsystem, Statics};
-use typings::frontrw::instruction::Instruction;
+use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player;
 use typings::persist::player_location::{PlayerLocation, Station, Warp};
 use typings::persist::ship::{Ship, Status};
@@ -25,7 +25,7 @@ pub fn advance(
     solarsystem: solarsystem::Identifier,
     site_info: &site::Info,
     site_entities: &mut Vec<SiteEntity>,
-    instructions: &mut HashMap<player::Identifier, Vec<Instruction>>,
+    instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>,
     player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
     player_ships: &mut HashMap<player::Identifier, Ship>,
     players_warping_in: &[player::Identifier],
@@ -33,7 +33,7 @@ pub fn advance(
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let sorted_instructions = super::instructions::sort(instructions);
+    let sorted_instructions = super::site_instructions::sort(instructions);
     if !sorted_instructions.is_empty() {
         println!(
             "site::handle {:>15} {:20} {:?}",
@@ -47,7 +47,7 @@ pub fn advance(
     let mut effects: HashMap<usize, Vec<Effect>> = HashMap::new();
     for (player, instruction) in &sorted_instructions {
         match instruction {
-            Instruction::ModuleUntargeted(module) => {
+            SiteInstruction::ModuleUntargeted(module) => {
                 let origin_site_index =
                     player_pos(site_entities, player).expect("player has to be in site_entities");
                 if let Some(module) = player_ships
@@ -62,7 +62,7 @@ pub fn advance(
                     println!("WARN: player untargeted module not handled {:?}", module);
                 }
             }
-            Instruction::ModuleTargeted(module) => {
+            SiteInstruction::ModuleTargeted(module) => {
                 let origin_site_index =
                     player_pos(site_entities, player).expect("player has to be in site_entities");
                 let target_site_index = module.target_index_in_site as usize;
@@ -81,7 +81,7 @@ pub fn advance(
                     println!("WARN: player targeted module not handled {:?}", module);
                 }
             }
-            Instruction::Facility(_) | Instruction::Undock | Instruction::Warp(_) => {
+            SiteInstruction::Facility(_) | SiteInstruction::Warp(_) => {
                 // Handled later
             }
         }
@@ -127,30 +127,10 @@ pub fn advance(
         };
 
         match instruction {
-            Instruction::ModuleUntargeted(_) | Instruction::ModuleTargeted(_) => {
+            SiteInstruction::ModuleUntargeted(_) | SiteInstruction::ModuleTargeted(_) => {
                 // Already handled
             }
-            Instruction::Undock => {
-                let ship = player_ships
-                    .get(player)
-                    .expect("player undocking also has to be in player_ships");
-                if ship.fitting.is_valid(statics) {
-                    site_entities.push(SiteEntity::Player(Player {
-                        id: player.to_string(),
-                        shiplayout: ship.fitting.layout.to_string(),
-                    }));
-                    *location = PlayerLocation::Site(site::Identifier {
-                        solarsystem,
-                        site_unique: Info::generate_station(solarsystem, station).site_unique,
-                    });
-                } else {
-                    eprintln!(
-                        "player tried to undock with invalid ship {} {:?}",
-                        player, ship
-                    );
-                }
-            }
-            Instruction::Facility(facility) => {
+            SiteInstruction::Facility(facility) => {
                 match facility.service {
                     Service::Dock => {
                         remove_player_from_entities(site_entities, player);
@@ -175,7 +155,7 @@ pub fn advance(
                     }
                 }
             }
-            Instruction::Warp(warp) => {
+            SiteInstruction::Warp(warp) => {
                 if warp.site_unique != site_info.site_unique {
                     remove_player_from_entities(site_entities, player);
                     *location = PlayerLocation::Warp(Warp {

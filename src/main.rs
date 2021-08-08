@@ -5,16 +5,18 @@ use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 use typings::fixed::{solarsystem, Statics};
-use typings::frontrw::instruction::Instruction;
+use typings::frontrw::site_instruction::SiteInstruction;
+use typings::frontrw::station_instruction::StationInstruction;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::site;
 
-use crate::persist::player::{read_player_location, write_player_instructions};
+use crate::persist::player::{read_player_location, write_player_site_instructions};
 use crate::persist::site::{read_site_entities, read_sites};
 
 mod gameloop;
 mod math;
 mod persist;
+mod station;
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
@@ -74,12 +76,13 @@ fn init_webserver() -> tide::Server<()> {
     app.at("/player/:player/ship").get(player_ship);
     app.at("/player/:player/station-assets/:solarsystem/:station")
         .get(station_assets);
+    app.at("/player/:player/site-instructions")
+        .post(post_site_instructions);
+    app.at("/player/:player/station-instructions")
+        .post(post_station_instructions);
 
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
-
-    app.at("/set-instructions/:player")
-        .post(testing_set_instructions);
 
     app
 }
@@ -147,15 +150,30 @@ async fn station_assets(req: Request<()>) -> tide::Result {
 }
 
 #[allow(clippy::unused_async)]
-async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
+async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
-    let instructions = req.body_json::<Vec<Instruction>>().await?;
+    let instructions = req.body_json::<Vec<SiteInstruction>>().await?;
     println!(
-        "Instructions for player {} ({}): {:?}",
+        "SiteInstructions for player {} ({}): {:?}",
         player,
         instructions.len(),
         instructions
     );
-    write_player_instructions(&player, &instructions)?;
+    write_player_site_instructions(&player, &instructions)?;
+    Ok(Response::builder(StatusCode::Ok).build())
+}
+
+#[allow(clippy::unused_async)]
+async fn post_station_instructions(mut req: Request<()>) -> tide::Result {
+    let player = req.param("player")?.to_string();
+    let instructions = req.body_json::<Vec<StationInstruction>>().await?;
+    println!(
+        "StationInstructions for player {} ({}): {:?}",
+        player,
+        instructions.len(),
+        instructions
+    );
+    let statics = Statics::default();
+    station::do_instructions(&statics, &player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
 }

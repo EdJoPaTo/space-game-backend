@@ -7,8 +7,9 @@ use typings::persist::{player, site};
 
 use crate::math::round::advance;
 use crate::persist::player::{
-    read_all_player_locations, read_player_instructions, read_player_location, read_player_ship,
-    write_player_instructions, write_player_location, write_player_ship,
+    read_all_player_locations, read_player_location, read_player_ship,
+    read_player_site_instructions, write_player_location, write_player_ship,
+    write_player_site_instructions,
 };
 use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
 
@@ -95,7 +96,7 @@ fn handle(
     let mut instructions = {
         let mut result = HashMap::new();
         for player in &all_players_involved {
-            let instructions = read_player_instructions(player);
+            let instructions = read_player_site_instructions(player);
             result.insert((*player).to_string(), instructions);
         }
         result
@@ -131,7 +132,7 @@ fn handle(
         eprintln!("{} write_site_entities {}", error_prefix, err);
     }
     for (player, instructions) in &instructions {
-        if let Err(err) = write_player_instructions(player, instructions) {
+        if let Err(err) = write_player_site_instructions(player, instructions) {
             some_error = true;
             eprintln!(
                 "{} write_player_instructions {} {}",

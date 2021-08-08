@@ -26,6 +26,6 @@ async fn do_loop() -> ! {
 
 fn once(statics: &Statics) -> anyhow::Result<()> {
     site::all(statics)?;
-    ship::all(statics)?;
+    ship::all()?;
     Ok(())
 }
