@@ -1,21 +1,18 @@
 #![allow(
-    dead_code,
-    unused_variables,
-    clippy::unnecessary_wraps,
-    unused_imports,
-    clippy::too_many_lines
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::unnecessary_wraps
 )]
 
 use std::collections::HashMap;
 
 use typings::fixed::facility::Service;
 use typings::fixed::module::Effect;
-use typings::fixed::site::Kind;
 use typings::fixed::{solarsystem, Statics};
-use typings::frontrw::instruction::{Instruction, ModuleTargeted, ModuleUntargeted};
+use typings::frontrw::instruction::Instruction;
 use typings::persist::player;
 use typings::persist::player_location::{PlayerLocation, Station, Warp};
-use typings::persist::ship::{Fitting, Ship, Status};
+use typings::persist::ship::{Ship, Status};
 use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
@@ -27,7 +24,8 @@ pub struct Outputs {
 
 pub fn advance(
     statics: &Statics,
-    site_identifier: &site::Identifier,
+    solarsystem: solarsystem::Identifier,
+    site_info: &site::Info,
     site_entities: &mut Vec<SiteEntity>,
     instructions: &mut HashMap<player::Identifier, Vec<Instruction>>,
     player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
@@ -114,7 +112,7 @@ pub fn advance(
             .entry(player.to_string())
             .or_insert_with(|| {
                 PlayerLocation::Station(Station {
-                    solarsystem: site_identifier.solarsystem,
+                    solarsystem,
                     station: 0,
                 })
             });
@@ -130,9 +128,8 @@ pub fn advance(
             }
             Instruction::Undock => {
                 *location = PlayerLocation::Site(site::Identifier {
-                    solarsystem: site_identifier.solarsystem,
-                    site_unique: Info::generate_station(site_identifier.solarsystem, station)
-                        .site_unique,
+                    solarsystem,
+                    site_unique: Info::generate_station(solarsystem, station).site_unique,
                 });
             }
             Instruction::Facility(facility) => {
@@ -140,17 +137,17 @@ pub fn advance(
                     Service::Dock => {
                         remove_player_from_entities(site_entities, player);
                         *location = PlayerLocation::Station(Station {
-                            solarsystem: site_identifier.solarsystem,
+                            solarsystem,
                             station,
                         });
                     }
                     Service::Jump => {
-                        let target_solarsystem = site_identifier
-                        .site_unique
-                        .trim_start_matches("stargate")
-                        .parse()
-                        .unwrap_or_else(|_| panic!("stargate site_unique is formatted differently than expected {}", site_identifier.site_unique));
-                        let target_site = Info::generate_stargate(site_identifier.solarsystem);
+                        let target_solarsystem = site_info
+                            .site_unique
+                            .trim_start_matches("stargate")
+                            .parse()
+                            .unwrap_or_else(|_| panic!("stargate site_unique is formatted differently than expected {}", site_info.site_unique));
+                        let target_site = Info::generate_stargate(solarsystem);
 
                         remove_player_from_entities(site_entities, player);
                         *location = PlayerLocation::Warp(Warp {
@@ -166,11 +163,9 @@ pub fn advance(
             }
             Instruction::Warp(warp) => {
                 remove_player_from_entities(site_entities, player);
-                *location = PlayerLocation::Warp(Warp {
-                    solarsystem: site_identifier.solarsystem,
-                });
+                *location = PlayerLocation::Warp(Warp { solarsystem });
                 warp_out.push((
-                    site_identifier.solarsystem,
+                    solarsystem,
                     warp.site_unique.to_string(),
                     player.to_string(),
                 ));
@@ -192,8 +187,8 @@ pub fn advance(
         player_locations.insert(
             player.to_string(),
             PlayerLocation::Site(site::Identifier {
-                solarsystem: site_identifier.solarsystem,
-                site_unique: site_identifier.site_unique.to_string(),
+                solarsystem,
+                site_unique: site_info.site_unique.to_string(),
             }),
         );
     }

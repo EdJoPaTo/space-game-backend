@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::time::Instant;
 
-use typings::fixed::Statics;
+use typings::fixed::{solarsystem, Statics};
 use typings::persist::site;
 use typings::persist::site_entity::SiteEntity;
 
@@ -10,15 +9,32 @@ use crate::persist::player::{
     add_player_in_warp, pop_players_in_warp, read_player_instructions, read_player_location,
     read_player_ship, write_player_instructions, write_player_location, write_player_ship,
 };
-use crate::persist::site::{read_site_entities, write_site_entities};
+use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
 
-pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::Result<()> {
-    println!("handle site {:?}", site_identifier);
+pub fn all(statics: &Statics) -> anyhow::Result<()> {
+    let mut some_error = false;
+    for solarsystem in statics.solarsystems.keys().copied() {
+        let sites = read_sites(solarsystem).expect("init at least created gate sites");
+        for site_info in sites.values().flatten() {
+            if let Err(err) = handle(statics, solarsystem, site_info) {
+                some_error = true;
+                eprintln!("ERROR gameloop::site::handle {}", err);
+            }
+        }
+    }
+    if some_error {
+        Err(anyhow::anyhow!("ERROR gameloop::site::all had some error"))
+    } else {
+        Ok(())
+    }
+}
 
-    let solarsystem = site_identifier.solarsystem;
-    let site_unique = &site_identifier.site_unique;
-
-    let mut measure = Instant::now();
+pub fn handle(
+    statics: &Statics,
+    solarsystem: solarsystem::Identifier,
+    site_info: &site::Info,
+) -> anyhow::Result<()> {
+    let site_unique = &site_info.site_unique;
 
     let mut site_entities = read_site_entities(solarsystem, site_unique).unwrap_or_default();
 
@@ -58,12 +74,10 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
         player_locations.insert(player.to_string(), location);
     }
 
-    let measure_load = measure.elapsed();
-    measure = Instant::now();
-
     let outputs = advance(
         statics,
-        site_identifier,
+        solarsystem,
+        site_info,
         &mut site_entities,
         &mut instructions,
         &mut player_locations,
@@ -71,12 +85,9 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
         &players_warping_in,
     )?;
 
-    let measure_math = measure.elapsed();
-    measure = Instant::now();
-
     // Nothing after this point is allowed to fail the rest -> Data has to be saved
     let mut some_error = false;
-    let error_prefix = format!("ERROR handle site {:?}", site_identifier);
+    let error_prefix = format!("ERROR handle site {} {}", solarsystem, site_unique);
 
     if let Err(err) = write_site_entities(solarsystem, site_unique, &site_entities) {
         some_error = true;
@@ -109,13 +120,6 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
             eprintln!("{} add_player_in_warp {}", error_prefix, err);
         }
     }
-
-    let measure_save = measure.elapsed();
-
-    println!(
-        "handle site {:?} took {:?} {:?} {:?}",
-        site_identifier, measure_load, measure_math, measure_save
-    );
 
     if some_error {
         Err(anyhow::anyhow!(

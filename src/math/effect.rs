@@ -1,5 +1,3 @@
-#![allow(clippy::match_same_arms, dead_code)]
-
 use typings::fixed::module::Effect;
 use typings::persist::ship::Status;
 

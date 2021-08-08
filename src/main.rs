@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::time::Instant;
 
 use persist::player::{read_player_ship, read_station_assets};
@@ -11,9 +10,7 @@ use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
 use typings::persist::site;
 
-use crate::persist::player::{
-    bodge_find_player_in_warp, read_player_location, write_player_instructions,
-};
+use crate::persist::player::{read_player_location, write_player_instructions};
 use crate::persist::site::{read_site_entities, read_sites};
 
 mod gameloop;
@@ -37,6 +34,12 @@ async fn main() -> anyhow::Result<()> {
         let measure = Instant::now();
         let app = init_webserver();
         println!("  took {:?}", measure.elapsed());
+
+        println!("start gameloop...");
+        let measure = Instant::now();
+        gameloop::start(&statics).expect("first gameloop iteration failed");
+        println!("  took {:?}", measure.elapsed());
+
         app
     };
 
@@ -152,41 +155,12 @@ async fn station_assets(req: Request<()>) -> tide::Result {
 async fn testing_set_instructions(mut req: Request<()>) -> tide::Result {
     let player = req.param("player")?.to_string();
     let instructions = req.body_json::<Vec<Instruction>>().await?;
-
     println!(
         "Instructions for player {} ({}): {:?}",
         player,
         instructions.len(),
         instructions
     );
-
     write_player_instructions(&player, &instructions)?;
-
-    let statics = Statics::default();
-    let location = read_player_location(&player).unwrap_or_else(|_| {
-        PlayerLocation::Site(site::Identifier {
-            solarsystem: solarsystem::Identifier::default(),
-            site_unique: site::Info::generate_station(solarsystem::Identifier::default(), 0)
-                .site_unique,
-        })
-    });
-    let solarsystem = location.solarsystem();
-
-    let site_unique = match location {
-        PlayerLocation::Site(site) => site.site_unique,
-        PlayerLocation::Warp(_) => bodge_find_player_in_warp(solarsystem, &player)?,
-        PlayerLocation::Station(_) => site::Info::generate_station(solarsystem, 0).site_unique,
-    };
-
-    let mut player_instructions = HashMap::new();
-    player_instructions.insert(player.to_string(), instructions);
-
-    gameloop::site::handle(
-        &statics,
-        &(site::Identifier {
-            solarsystem,
-            site_unique,
-        }),
-    )?;
     Ok(Response::builder(StatusCode::Ok).build())
 }

@@ -83,24 +83,6 @@ pub fn add_player_in_warp(
     list.push(player);
     write(&filename, &list)
 }
-pub fn bodge_find_player_in_warp(
-    solarsystem: solarsystem::Identifier,
-    player: &str,
-) -> Result<String> {
-    for bla in std::fs::read_dir(format!("persist/warp-towards/{:?}/", solarsystem))? {
-        let path = bla?.path();
-        println!("bodge_find_player_in_warp check {:?}", path);
-        if let Some(site_unique) = path.file_stem().and_then(std::ffi::OsStr::to_str) {
-            if let Some(filename) = path.to_str() {
-                let players: Vec<player::Identifier> = read(filename)?;
-                if players.contains(&player.to_string()) {
-                    return Ok(site_unique.to_string());
-                }
-            }
-        }
-    }
-    Err(anyhow::anyhow!("whatever"))
-}
 
 pub fn read_player_instructions(player: &str) -> Vec<Instruction> {
     read(&filename_instructions(player)).unwrap_or_default()

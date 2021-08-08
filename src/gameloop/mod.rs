@@ -1,8 +1,29 @@
-#![allow(clippy::unnecessary_wraps, dead_code)]
+use std::time::Duration;
 
-// TODO: remove pub and handle site yourself
-pub mod site;
+use async_std::task::{sleep, spawn};
+use typings::fixed::Statics;
 
-pub fn do_loop() -> anyhow::Result<()> {
+mod site;
+
+pub fn start(statics: &Statics) -> anyhow::Result<()> {
+    once(statics)?;
+    spawn(async {
+        do_loop().await;
+    });
+    Ok(())
+}
+
+async fn do_loop() -> ! {
+    let statics = Statics::default();
+    loop {
+        sleep(Duration::from_secs(4)).await;
+        if let Err(err) = once(&statics) {
+            eprintln!("ERROR gameloop {}", err);
+        }
+    }
+}
+
+fn once(statics: &Statics) -> anyhow::Result<()> {
+    site::all(statics)?;
     Ok(())
 }
