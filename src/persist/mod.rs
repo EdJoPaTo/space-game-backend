@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use typings::fixed::Statics;
 
+mod ensure_player_locations;
 pub mod player;
 pub mod site;
 
@@ -58,5 +59,6 @@ fn list<P: AsRef<Path>>(folder: P) -> Vec<PathBuf> {
 
 pub fn init(statics: &Statics) -> anyhow::Result<()> {
     site::ensure_statics(&statics.solarsystems)?;
+    ensure_player_locations::ensure_player_locations(statics)?;
     Ok(())
 }
