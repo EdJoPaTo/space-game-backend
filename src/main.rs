@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
 
         println!("init persist...");
         let measure = Instant::now();
-        persist::ensure_statics(&statics).unwrap();
+        persist::init(&statics).unwrap();
         println!("  took {:?}", measure.elapsed());
 
         println!("init webserver...");

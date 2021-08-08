@@ -74,18 +74,40 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
     let measure_math = measure.elapsed();
     measure = Instant::now();
 
-    write_site_entities(solarsystem, site_unique, &site_entities)?;
+    // Nothing after this point is allowed to fail the rest -> Data has to be saved
+    let mut some_error = false;
+    let error_prefix = format!("ERROR handle site {:?}", site_identifier);
+
+    if let Err(err) = write_site_entities(solarsystem, site_unique, &site_entities) {
+        some_error = true;
+        eprintln!("{} write_site_entities {}", error_prefix, err);
+    }
     for (player, instructions) in &instructions {
-        write_player_instructions(player, instructions)?;
+        if let Err(err) = write_player_instructions(player, instructions) {
+            some_error = true;
+            eprintln!(
+                "{} write_player_instructions {} {}",
+                error_prefix, player, err
+            );
+        }
     }
     for (player, ship) in &player_ships {
-        write_player_ship(player, ship)?;
+        if let Err(err) = write_player_ship(player, ship) {
+            some_error = true;
+            eprintln!("{} write_player_ship {} {}", error_prefix, player, err);
+        }
     }
     for (player, location) in &player_locations {
-        write_player_location(player, location)?;
+        if let Err(err) = write_player_location(player, location) {
+            some_error = true;
+            eprintln!("{} write_player_location {} {}", error_prefix, player, err);
+        }
     }
     for (solarsystem, site_unique, player) in outputs.warp_out {
-        add_player_in_warp(solarsystem, &site_unique, player)?;
+        if let Err(err) = add_player_in_warp(solarsystem, &site_unique, player) {
+            some_error = true;
+            eprintln!("{} add_player_in_warp {}", error_prefix, err);
+        }
     }
 
     let measure_save = measure.elapsed();
@@ -95,5 +117,12 @@ pub fn handle(statics: &Statics, site_identifier: &site::Identifier) -> anyhow::
         site_identifier, measure_load, measure_math, measure_save
     );
 
-    Ok(())
+    if some_error {
+        Err(anyhow::anyhow!(
+            "{} some error while saving occured",
+            error_prefix
+        ))
+    } else {
+        Ok(())
+    }
 }
