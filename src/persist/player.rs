@@ -6,7 +6,7 @@ use typings::persist::player_assets::PlayerStationAssets;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
 
-use super::{delete, read, write};
+use super::{delete, list, read, write};
 
 fn filename_station_assets(
     player: &str,
@@ -55,6 +55,19 @@ pub fn read_player_location(player: &str) -> Result<PlayerLocation> {
 }
 pub fn write_player_location(player: &str, location: &PlayerLocation) -> Result<()> {
     write(&filename_player_location(player), location)
+}
+pub fn read_all_player_locations() -> Vec<(player::Identifier, PlayerLocation)> {
+    let list = list("persist/player-location/");
+    let list = list
+        .iter()
+        .filter_map(|o| o.file_stem())
+        .filter_map(std::ffi::OsStr::to_str);
+    let mut result = Vec::new();
+    for player in list {
+        let location = read_player_location(player).unwrap();
+        result.push((player.to_string(), location));
+    }
+    result
 }
 
 pub fn read_player_ship(player: &str) -> Result<Ship> {
