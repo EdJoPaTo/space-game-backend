@@ -49,9 +49,13 @@ fn do_instruction(
         }
         StationInstruction::Undock => {
             let ship = read_player_ship(player);
-            let is_valid = ship.fitting.is_valid(statics);
-            if !is_valid {
-                return Err(anyhow::anyhow!("That ship wont fly {} {:?}", player, ship));
+            if let Err(err) = ship.fitting.is_valid(statics) {
+                return Err(anyhow::anyhow!(
+                    "That ship wont fly {} {:?} {:?}",
+                    player,
+                    err,
+                    ship
+                ));
             }
 
             let site_unique = Info::generate_station(solarsystem, station).site_unique;
