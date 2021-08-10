@@ -7,7 +7,6 @@
 use std::collections::HashMap;
 
 use typings::fixed::facility::Service;
-use typings::fixed::module::Effect;
 use typings::fixed::{solarsystem, Statics};
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player;
@@ -16,7 +15,7 @@ use typings::persist::ship::{Ship, Status};
 use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
-use crate::math::effect::apply_to_status;
+use super::effect::{apply_to_origin, apply_to_target};
 
 pub struct Outputs {}
 
@@ -43,100 +42,74 @@ pub fn advance(
         );
     }
 
-    // First collect all module effects
-    let mut effects: HashMap<usize, Vec<Effect>> = HashMap::new();
     for (player, instruction) in &sorted_instructions {
+        let origin_ship = player_ships
+            .get_mut(player)
+            .expect("player_ships has to contain player with instructions");
+        let location = player_locations
+            .get_mut(player)
+            .expect("player with instructions has to be in player_locations");
+
         match instruction {
             SiteInstruction::ModuleUntargeted(module) => {
-                let origin_site_index =
-                    player_pos(site_entities, player).expect("player has to be in site_entities");
-                if let Some(module) = player_ships
-                    .get(player)
-                    .and_then(|o| o.fitting.slots_untargeted.get(module.module_index as usize))
+                if let Some(module) = origin_ship
+                    .fitting
+                    .slots_untargeted
+                    .get(module.module_index as usize)
                     .and_then(|o| statics.modules_untargeted.get(o))
                 {
-                    for effect in &module.effects {
-                        effects.entry(origin_site_index).or_default().push(*effect);
+                    if let Some(my_new_status) =
+                        apply_to_origin(origin_ship.status, &module.effects)
+                    {
+                        origin_ship.status = my_new_status;
                     }
                 } else {
                     println!("WARN: player untargeted module not handled {:?}", module);
                 }
             }
             SiteInstruction::ModuleTargeted(module) => {
-                let origin_site_index =
-                    player_pos(site_entities, player).expect("player has to be in site_entities");
                 let target_site_index = module.target_index_in_site as usize;
-                if let Some(module) = player_ships
-                    .get(player)
-                    .and_then(|o| o.fitting.slots_targeted.get(module.module_index as usize))
+                if let Some(module) = origin_ship
+                    .fitting
+                    .slots_targeted
+                    .get(module.module_index as usize)
                     .and_then(|o| statics.modules_targeted.get(o))
                 {
-                    for effect in &module.effects_origin {
-                        effects.entry(origin_site_index).or_default().push(*effect);
-                    }
-                    for effect in &module.effects_target {
-                        effects.entry(target_site_index).or_default().push(*effect);
+                    if let Some(target) = site_entities.get_mut(target_site_index) {
+                        if let Some(origin_new_status) =
+                            apply_to_origin(origin_ship.status, &module.effects_origin)
+                        {
+                            origin_ship.status = origin_new_status;
+                            match target {
+                                SiteEntity::Facility(_) | SiteEntity::Lifeless(_) => { /* Currently immune */
+                                }
+                                SiteEntity::Npc(npc) => {
+                                    npc.status =
+                                        apply_to_target(npc.status, &module.effects_target);
+                                }
+                                SiteEntity::Player(player) => {
+                                    let target_ship = player_ships
+                                        .get_mut(&player.id)
+                                        .expect("player in site has to be in player_ships");
+                                    target_ship.status =
+                                        apply_to_target(target_ship.status, &module.effects_target);
+                                }
+                            }
+                        }
                     }
                 } else {
                     println!("WARN: player targeted module not handled {:?}", module);
                 }
             }
-            SiteInstruction::Facility(_) | SiteInstruction::Warp(_) => {
-                // Handled later
-            }
-        }
-    }
-
-    // Then apply the module effects
-    for (index, mut effects) in effects {
-        effects.sort();
-        if let Some(entity) = site_entities.get_mut(index) {
-            match entity {
-                SiteEntity::Facility(_) | SiteEntity::Lifeless(_) => { /* Currently immune */ }
-                SiteEntity::Npc(npc) => {
-                    npc.status = apply_to_status(npc.status, &effects);
-                }
-                SiteEntity::Player(player) => {
-                    let ship = player_ships
-                        .get_mut(&player.id)
-                        .expect("player has to be in player_ships");
-                    ship.status = apply_to_status(ship.status, &effects);
-                }
-            }
-        }
-    }
-
-    // cleanup dead or impaired
-    *site_entities = cleanup_entities(statics, site_entities, player_ships)?;
-
-    // Finally do movements
-    for (player, instruction) in &sorted_instructions {
-        // TODO: check if player is still in site_entites. If not the player is dead
-        let location = player_locations
-            .entry(player.to_string())
-            .or_insert_with(|| {
-                PlayerLocation::Station(Station {
-                    solarsystem,
-                    station: 0,
-                })
-            });
-        let station = if let PlayerLocation::Station(station) = location {
-            station.station
-        } else {
-            0
-        };
-
-        match instruction {
-            SiteInstruction::ModuleUntargeted(_) | SiteInstruction::ModuleTargeted(_) => {
-                // Already handled
-            }
             SiteInstruction::Facility(facility) => {
+                // TODO: ensure still alive
                 match facility.service {
                     Service::Dock => {
                         remove_player_from_entities(site_entities, player);
                         *location = PlayerLocation::Station(Station {
                             solarsystem,
-                            station,
+                            // TODO: dock at correct station
+                            station: 0,
                         });
                     }
                     Service::Jump => {
@@ -156,16 +129,21 @@ pub fn advance(
                 }
             }
             SiteInstruction::Warp(warp) => {
-                if warp.site_unique != site_info.site_unique {
-                    remove_player_from_entities(site_entities, player);
-                    *location = PlayerLocation::Warp(Warp {
-                        solarsystem,
-                        towards_site_unique: warp.site_unique.to_string(),
-                    });
-                }
+                assert_ne!(
+                    warp.site_unique, site_info.site_unique,
+                    "players warping in are not yet in instructions"
+                );
+                // TODO: ensure still alive
+                remove_player_from_entities(site_entities, player);
+                *location = PlayerLocation::Warp(Warp {
+                    solarsystem,
+                    towards_site_unique: warp.site_unique.to_string(),
+                });
             }
         }
     }
+
+    *site_entities = cleanup_entities(statics, site_entities, player_ships)?;
 
     // Add players in warp to here
     for player in players_warping_in {
@@ -209,6 +187,7 @@ fn remove_player_from_entities(site_entities: &mut Vec<SiteEntity>, player: &str
 }
 
 #[allow(clippy::option_if_let_else)]
+/// cleanup dead and ensure status is within ship layout limits
 fn cleanup_entities(
     statics: &Statics,
     before: &[SiteEntity],
