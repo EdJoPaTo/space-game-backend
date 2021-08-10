@@ -149,12 +149,6 @@ pub fn advance(
     for player in players_warping_in {
         site_entities.push(SiteEntity::Player(Player {
             id: player.to_string(),
-            shiplayout: player_ships
-                .get(player)
-                .expect("player warping in also has to be in player_ships")
-                .fitting
-                .layout
-                .to_string(),
         }));
         player_locations.insert(
             player.to_string(),

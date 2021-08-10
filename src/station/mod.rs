@@ -59,7 +59,6 @@ fn do_instruction(
             let mut entities = read_site_entities(solarsystem, &site_unique)?;
             entities.push(SiteEntity::Player(Player {
                 id: player.to_string(),
-                shiplayout: ship.fitting.layout,
             }));
             write_site_entities(solarsystem, &site_unique, &entities)?;
 

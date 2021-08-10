@@ -3,7 +3,7 @@ use typings::fixed::Statics;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::site_entity::{Player, SiteEntity};
 
-use crate::persist::player::{read_player_ship, write_player_location};
+use crate::persist::player::write_player_location;
 use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
 
 use super::player::read_all_player_locations;
@@ -36,10 +36,8 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
                         .any(|o| matches!(o, SiteEntity::Player(p) if &p.id == player));
                     if !site_knows {
                         eprintln!("ensure_player_locations player expected to be in site but site didnt knew: {} {} {:?}", player, solarsystem, site_info);
-                        let player_ship = read_player_ship(player);
                         entities.push(SiteEntity::Player(Player {
                             id: player.to_string(),
-                            shiplayout: player_ship.fitting.layout,
                         }));
                         write_site_entities(*solarsystem, &site_info.site_unique, &entities)?;
                     }
