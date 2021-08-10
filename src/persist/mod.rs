@@ -3,11 +3,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use typings::fixed::Statics;
-
 mod ensure_player_locations;
 pub mod player;
 pub mod site;
+
+pub use ensure_player_locations::ensure_player_locations;
+pub use site::ensure_statics;
 
 fn read<P: AsRef<Path>, T>(file: P) -> T
 where
@@ -66,10 +67,4 @@ fn list<P: AsRef<Path>>(folder: P) -> Vec<PathBuf> {
         }
     }
     result
-}
-
-pub fn init(statics: &Statics) -> anyhow::Result<()> {
-    site::ensure_statics(&statics.solarsystems)?;
-    ensure_player_locations::ensure_player_locations(statics)?;
-    Ok(())
 }

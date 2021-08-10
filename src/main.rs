@@ -16,9 +16,14 @@ async fn main() -> anyhow::Result<()> {
         let statics = Statics::default();
         println!("  took {:?}", measure.elapsed());
 
-        println!("init persist...");
+        println!("persist ensure_statics...");
         let measure = Instant::now();
-        persist::init(&statics).unwrap();
+        persist::ensure_statics(&statics.solarsystems).unwrap();
+        println!("  took {:?}", measure.elapsed());
+
+        println!("persist ensure_player_locations...");
+        let measure = Instant::now();
+        persist::ensure_player_locations(&statics).unwrap();
         println!("  took {:?}", measure.elapsed());
 
         println!("init webserver...");
