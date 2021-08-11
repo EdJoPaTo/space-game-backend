@@ -7,7 +7,8 @@
 use std::collections::HashMap;
 
 use typings::fixed::facility::Service;
-use typings::fixed::{solarsystem, Statics};
+use typings::fixed::solarsystem::Solarsystem;
+use typings::fixed::Statics;
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player;
 use typings::persist::player_location::{PlayerLocation, Station, Warp};
@@ -21,7 +22,7 @@ pub struct Outputs {}
 
 pub fn advance(
     statics: &Statics,
-    solarsystem: solarsystem::Identifier,
+    solarsystem: Solarsystem,
     site_info: &site::Info,
     site_entities: &mut Vec<SiteEntity>,
     instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>,

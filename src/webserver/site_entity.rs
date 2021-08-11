@@ -1,14 +1,11 @@
-use typings::fixed::{solarsystem, Statics};
+use typings::fixed::solarsystem::Solarsystem;
+use typings::fixed::Statics;
 use typings::frontread::site_entity::{Lifeless, Npc, Player, SiteEntity};
 
 use crate::persist::player::read_player_ship;
 use crate::persist::site::read_site_entities;
 
-pub fn read(
-    statics: &Statics,
-    solarsystem: solarsystem::Identifier,
-    site_unique: &str,
-) -> Vec<SiteEntity> {
+pub fn read(statics: &Statics, solarsystem: Solarsystem, site_unique: &str) -> Vec<SiteEntity> {
     let persist_entities = read_site_entities(solarsystem, site_unique).unwrap_or_default();
     let mut result = Vec::new();
     for entity in &persist_entities {

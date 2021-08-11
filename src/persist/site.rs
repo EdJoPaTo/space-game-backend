@@ -1,36 +1,35 @@
 use anyhow::Result;
+use typings::fixed::facility::Facility;
 use typings::fixed::npc_faction::NpcFaction;
+use typings::fixed::shiplayout::ShipLayout;
 use typings::fixed::site::Kind;
+use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Solarsystems;
-use typings::fixed::{facility, solarsystem};
 use typings::persist::ship::{Fitting, Status};
 use typings::persist::site::{Info, SitesNearPlanet};
-use typings::persist::site_entity::{Facility, Npc, SiteEntity};
+use typings::persist::site_entity::{self, Npc, SiteEntity};
 
 use super::{read_meh, write};
 
 // TODO: mutex on solarsystem for read and write access
 // read needs probably public and private methods to prevent deadlock?
 
-fn filename_site_entities(solarsystem: solarsystem::Identifier, site_unique: &str) -> String {
+fn filename_site_entities(solarsystem: Solarsystem, site_unique: &str) -> String {
     format!("persist/site-entities/{}/{}.yaml", solarsystem, site_unique)
 }
 
-fn filename_sites(solarsystem: solarsystem::Identifier) -> String {
+fn filename_sites(solarsystem: Solarsystem) -> String {
     format!("persist/sites/{}.yaml", solarsystem)
 }
 
-pub fn read_site_entities(
-    solarsystem: solarsystem::Identifier,
-    site_unique: &str,
-) -> Result<Vec<SiteEntity>> {
+pub fn read_site_entities(solarsystem: Solarsystem, site_unique: &str) -> Result<Vec<SiteEntity>> {
     read_meh(&filename_site_entities(solarsystem, site_unique))
 }
 
-pub fn read_sites(solarsystem: solarsystem::Identifier) -> Result<SitesNearPlanet> {
+pub fn read_sites(solarsystem: Solarsystem) -> Result<SitesNearPlanet> {
     read_meh(&filename_sites(solarsystem))
 }
-pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(solarsystem::Identifier, Info)> {
+pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(Solarsystem, Info)> {
     let mut result = Vec::new();
     for solarsystem in solarsystems.keys().copied() {
         let sites = read_sites(solarsystem).expect("init at least created gate sites");
@@ -42,21 +41,18 @@ pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(solarsystem::I
 }
 
 pub fn write_site_entities(
-    solarsystem: solarsystem::Identifier,
+    solarsystem: Solarsystem,
     site_unique: &str,
     entities: &[SiteEntity],
 ) -> Result<()> {
     write(&filename_site_entities(solarsystem, site_unique), &entities)
 }
 
-fn write_sites(solarsystem: solarsystem::Identifier, sites: &SitesNearPlanet) -> Result<()> {
+fn write_sites(solarsystem: Solarsystem, sites: &SitesNearPlanet) -> Result<()> {
     write(&filename_sites(solarsystem), sites)
 }
 
-pub fn read_site_info(
-    solarsystem: solarsystem::Identifier,
-    site_unique: &str,
-) -> Result<Option<Info>> {
+pub fn read_site_info(solarsystem: Solarsystem, site_unique: &str) -> Result<Option<Info>> {
     let sites = read_sites(solarsystem)?;
     let site = sites
         .values()
@@ -66,7 +62,7 @@ pub fn read_site_info(
 }
 
 pub fn add(
-    solarsystem: solarsystem::Identifier,
+    solarsystem: Solarsystem,
     planet: u8,
     site: Info,
     entities: &[SiteEntity],
@@ -78,7 +74,7 @@ pub fn add(
     write_sites(solarsystem, &sites)
 }
 
-pub fn remove(solarsystem: solarsystem::Identifier, site_unique: &str) -> Result<()> {
+pub fn remove(solarsystem: Solarsystem, site_unique: &str) -> Result<()> {
     let mut sites = read_sites(solarsystem)?;
     if let Some((planet, index)) = position_of_site_unique(&sites, site_unique) {
         let sites = sites.get_mut(&planet).unwrap();
@@ -129,8 +125,8 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             // Add stargate
             entities.insert(
                 0,
-                SiteEntity::Facility(Facility {
-                    id: facility::Identifier::Stargate,
+                SiteEntity::Facility(site_entity::Facility {
+                    id: Facility::Stargate,
                 }),
             );
             write_site_entities(*solarsystem, &site_unique, &entities)?;
@@ -163,8 +159,8 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
             // Add station
             entities.insert(
                 0,
-                SiteEntity::Facility(Facility {
-                    id: facility::Identifier::Station,
+                SiteEntity::Facility(site_entity::Facility {
+                    id: Facility::Station,
                 }),
             );
             write_site_entities(*solarsystem, &site_unique, &entities)?;
@@ -191,8 +187,7 @@ fn add_guards(entities: &mut Vec<SiteEntity>) {
             SiteEntity::Npc(Npc {
                 faction: NpcFaction::Guards,
                 fitting: Fitting {
-                    // TODO: ensure layout exists
-                    layout: "shiplayoutFrigate".to_string(),
+                    layout: ShipLayout::Frigate,
                     slots_passive: vec![],
                     slots_targeted: vec![],
                     slots_untargeted: vec![],

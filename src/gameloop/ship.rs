@@ -1,4 +1,4 @@
-use typings::fixed::solarsystem;
+use typings::fixed::solarsystem::Solarsystem;
 use typings::persist::player_location::{PlayerLocation, Station};
 use typings::persist::ship::Ship;
 
@@ -17,7 +17,7 @@ pub fn all() -> anyhow::Result<()> {
             write_player_location(
                 &player,
                 &PlayerLocation::Station(Station {
-                    solarsystem: solarsystem::Identifier::default(),
+                    solarsystem: Solarsystem::default(),
                     station: 0,
                 }),
             )?;

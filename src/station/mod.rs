@@ -1,7 +1,7 @@
-use typings::fixed::{solarsystem, Statics};
+use typings::fixed::solarsystem::Solarsystem;
+use typings::fixed::Statics;
 use typings::frontrw::station_instruction::StationInstruction;
 use typings::persist::player_location::PlayerLocation;
-use typings::persist::ship::Status;
 use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Player, SiteEntity};
 
@@ -33,18 +33,17 @@ fn do_instruction(
     statics: &Statics,
     player: &str,
     instruction: &StationInstruction,
-    solarsystem: solarsystem::Identifier,
+    solarsystem: Solarsystem,
     station: u8,
 ) -> anyhow::Result<()> {
     match instruction {
         StationInstruction::Repair => {
             let mut ship = read_player_ship(player);
-            if let Some(status) = Status::new(statics, &ship.fitting) {
-                if ship.status != status {
-                    eprintln!("repair player ship in station {}", player);
-                    ship.status = status;
-                    write_player_ship(player, &ship)?;
-                }
+            let status = ship.fitting.maximum_status(statics);
+            if ship.status != status {
+                eprintln!("repair player ship in station {}", player);
+                ship.status = status;
+                write_player_ship(player, &ship)?;
             }
         }
         StationInstruction::Undock => {

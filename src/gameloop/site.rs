@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use typings::fixed::{solarsystem, Statics};
+use typings::fixed::solarsystem::Solarsystem;
+use typings::fixed::Statics;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::site_entity::SiteEntity;
 use typings::persist::{player, site};
@@ -47,7 +48,7 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 
 fn handle(
     statics: &Statics,
-    solarsystem: solarsystem::Identifier,
+    solarsystem: Solarsystem,
     site_info: &site::Info,
     players_warping_in: &[player::Identifier],
 ) -> anyhow::Result<()> {
