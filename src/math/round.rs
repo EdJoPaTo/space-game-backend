@@ -144,6 +144,11 @@ pub fn advance(
         }
     }
 
+    // provide ship/passive quality boni
+    for ship in player_ships.values_mut() {
+        ship.status = super::qualities::apply_round(ship.status, &ship.fitting.qualities(statics));
+    }
+
     *site_entities = cleanup_entities(statics, site_entities, player_ships)?;
 
     // Add players in warp to here
