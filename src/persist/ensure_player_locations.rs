@@ -35,7 +35,10 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
                         .iter()
                         .any(|o| matches!(o, SiteEntity::Player(p) if &p.id == player));
                     if !site_knows {
-                        eprintln!("ensure_player_locations player expected to be in site but site didnt knew: {} {} {:?}", player, solarsystem, site_info);
+                        eprintln!(
+                            "    player expected to be in site but site didnt knew: {} {} {:?}",
+                            player, solarsystem, site_info
+                        );
                         entities.push(SiteEntity::Player(Player {
                             id: player.to_string(),
                         }));
@@ -50,7 +53,7 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
         if !location_exists {
             let solarsystem = location.solarsystem();
             eprintln!(
-                "ensure_player_locations player expected to be in an non existing site. Bring player to existing site. {} was here: {:?}",
+                "    player expected to be in an non existing site. Bring player to existing site. {} was here: {:?}",
                 player, location
             );
             let first_safe = all_sites
