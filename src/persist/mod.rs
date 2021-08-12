@@ -8,7 +8,7 @@ pub mod player;
 pub mod site;
 
 pub use ensure_player_locations::ensure_player_locations;
-pub use site::ensure_statics;
+pub use site::ensure_static_sites;
 
 fn read<P: AsRef<Path>, T>(file: P) -> T
 where

@@ -1,11 +1,12 @@
 use anyhow::Result;
 use typings::fixed::facility::Facility;
+use typings::fixed::module::targeted::Targeted;
 use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::shiplayout::ShipLayout;
 use typings::fixed::site::Kind;
 use typings::fixed::solarsystem::Solarsystem;
-use typings::fixed::Solarsystems;
-use typings::persist::ship::{Fitting, Status};
+use typings::fixed::{Solarsystems, Statics};
+use typings::persist::ship::Fitting;
 use typings::persist::site::{Info, SitesNearPlanet};
 use typings::persist::site_entity::{self, Npc, SiteEntity};
 
@@ -93,8 +94,8 @@ fn position_of_site_unique(sites: &SitesNearPlanet, unique: &str) -> Option<(u8,
     None
 }
 
-pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
-    for (solarsystem, data) in &solarsystems.data {
+pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
+    for (solarsystem, data) in &statics.solarsystems.data {
         let mut sites = read_sites(*solarsystem).unwrap_or_default();
 
         // Purge stations and stargates from overview.
@@ -121,7 +122,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                 .cloned()
                 .collect::<Vec<_>>();
             // Add guards
-            add_guards(&mut entities);
+            add_guards(statics, &mut entities);
             // Add stargate
             entities.insert(
                 0,
@@ -155,7 +156,7 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
                 .cloned()
                 .collect::<Vec<_>>();
             // Add guards
-            add_guards(&mut entities);
+            add_guards(statics, &mut entities);
             // Add station
             entities.insert(
                 0,
@@ -180,24 +181,27 @@ pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
     Ok(())
 }
 
-fn add_guards(entities: &mut Vec<SiteEntity>) {
+fn add_guards(statics: &Statics, entities: &mut Vec<SiteEntity>) {
     for _ in 0..3 {
+        let fitting = Fitting {
+            layout: ShipLayout::Paladin,
+            slots_passive: vec![],
+            slots_targeted: vec![
+                Targeted::GuardianLaser,
+                Targeted::GuardianLaser,
+                Targeted::GuardianLaser,
+                Targeted::GuardianLaser,
+                Targeted::GuardianLaser,
+                Targeted::GuardianLaser,
+            ],
+            slots_untargeted: vec![],
+        };
         entities.insert(
             0,
             SiteEntity::Npc(Npc {
                 faction: NpcFaction::Guards,
-                fitting: Fitting {
-                    layout: ShipLayout::Frigate,
-                    slots_passive: vec![],
-                    slots_targeted: vec![],
-                    slots_untargeted: vec![],
-                },
-                // TODO: better status
-                status: Status {
-                    capacitor: 42,
-                    hitpoints_armor: 42,
-                    hitpoints_structure: 42,
-                },
+                fitting: fitting.clone(),
+                status: fitting.maximum_status(statics),
             }),
         );
     }
