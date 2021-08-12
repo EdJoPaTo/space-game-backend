@@ -100,7 +100,7 @@ fn handle(
         &mut player_locations,
         &mut player_ships,
         players_warping_in,
-    )?;
+    );
 
     // Nothing after this point is allowed to fail the rest -> Data has to be saved
     let mut some_error = false;
