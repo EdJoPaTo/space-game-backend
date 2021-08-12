@@ -82,7 +82,9 @@ pub fn advance(
                         {
                             origin_ship.status = origin_new_status;
                             match target {
-                                SiteEntity::Facility(_) | SiteEntity::Lifeless(_) => { /* Currently immune */
+                                SiteEntity::Facility(_) => { /* Currently immune */ }
+                                SiteEntity::Lifeless(l) => {
+                                    l.status = apply_to_target(l.status, &module.effects_target);
                                 }
                                 SiteEntity::Npc(npc) => {
                                     npc.status =
