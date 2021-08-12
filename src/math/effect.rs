@@ -1,4 +1,4 @@
-use typings::fixed::module::Effect;
+use typings::fixed::round_effect::RoundEffect;
 use typings::persist::ship::Status;
 
 const fn apply_damage(mut status: Status, damage: u16) -> Status {
@@ -9,47 +9,46 @@ const fn apply_damage(mut status: Status, damage: u16) -> Status {
 }
 
 #[allow(clippy::cast_sign_loss)]
-const fn can_apply_to_origin(status: Status, effect: Effect) -> bool {
+const fn can_apply_to_origin(status: Status, effect: RoundEffect) -> bool {
     match effect {
-        Effect::Capacitor(amount) => {
-            if amount >= 0 {
-                true
-            } else {
-                let amount = amount.saturating_abs() as u16;
-                status.capacitor.checked_sub(amount).is_some()
-            }
-        }
-        Effect::ArmorRepair(_) | Effect::Damage(_) | Effect::Mine(_) | Effect::WarpDisruption => {
-            true
-        }
+        RoundEffect::CapacitorDrain(amount) => status.capacitor.checked_sub(amount).is_some(),
+        RoundEffect::ArmorRepair(_)
+        | RoundEffect::CapacitorRecharge(_)
+        | RoundEffect::Damage(_)
+        | RoundEffect::Mine(_)
+        | RoundEffect::StructureRepair(_)
+        | RoundEffect::WarpDisruption => true,
     }
 }
 
 #[allow(clippy::cast_sign_loss)]
-const fn saturating_apply(mut status: Status, effect: Effect) -> Status {
+const fn saturating_apply(mut status: Status, effect: RoundEffect) -> Status {
     match effect {
-        Effect::Capacitor(amount) => {
-            status.capacitor = if amount >= 0 {
-                status.capacitor.saturating_add(amount as u16)
-            } else {
-                let amount = amount.saturating_abs() as u16;
-                status.capacitor.saturating_sub(amount)
-            };
+        RoundEffect::CapacitorDrain(amount) => {
+            status.capacitor = status.capacitor.saturating_sub(amount);
             status
         }
-        Effect::ArmorRepair(amount) => {
+        RoundEffect::CapacitorRecharge(amount) => {
+            status.capacitor = status.capacitor.saturating_add(amount as u16);
+            status
+        }
+        RoundEffect::ArmorRepair(amount) => {
             status.hitpoints_armor = status.hitpoints_armor.saturating_add(amount);
             status
         }
-        Effect::Damage(damage) => apply_damage(status, damage),
-        Effect::Mine(_) | Effect::WarpDisruption => status,
+        RoundEffect::StructureRepair(amount) => {
+            status.hitpoints_structure = status.hitpoints_structure.saturating_add(amount);
+            status
+        }
+        RoundEffect::Damage(damage) => apply_damage(status, damage),
+        RoundEffect::Mine(_) | RoundEffect::WarpDisruption => status,
     }
 }
 
 /// Applies effects to self when possible or returns None.
 ///
 /// Ignores ship limitations! Status might have more armor than ship layout can have.
-pub fn apply_to_origin(mut status: Status, effects: &[Effect]) -> Option<Status> {
+pub fn apply_to_origin(mut status: Status, effects: &[RoundEffect]) -> Option<Status> {
     let can_apply_all = effects.iter().all(|e| can_apply_to_origin(status, *e));
     if can_apply_all {
         for effect in effects {
@@ -64,7 +63,7 @@ pub fn apply_to_origin(mut status: Status, effects: &[Effect]) -> Option<Status>
 /// Applies effects in a saturating way. Example: Capacitor 2 - 5 → 0
 ///
 /// Ignores ship limitations! Status might have more armor than ship layout can have.
-pub fn apply_to_target(mut status: Status, effects: &[Effect]) -> Status {
+pub fn apply_to_target(mut status: Status, effects: &[RoundEffect]) -> Status {
     for effect in effects {
         status = saturating_apply(status, *effect);
     }
@@ -146,7 +145,10 @@ fn module_with_cap_works_on_origin() {
         hitpoints_armor: 0,
         hitpoints_structure: 10,
     };
-    let result = apply_to_origin(before, &[Effect::ArmorRepair(5), Effect::Capacitor(-5)]);
+    let result = apply_to_origin(
+        before,
+        &[RoundEffect::ArmorRepair(5), RoundEffect::CapacitorDrain(5)],
+    );
     assert_eq!(
         result,
         Some(Status {
@@ -164,7 +166,10 @@ fn module_without_cap_doesnt_work_on_origin() {
         hitpoints_armor: 0,
         hitpoints_structure: 10,
     };
-    let result = apply_to_origin(before, &[Effect::ArmorRepair(5), Effect::Capacitor(-5)]);
+    let result = apply_to_origin(
+        before,
+        &[RoundEffect::ArmorRepair(5), RoundEffect::CapacitorDrain(5)],
+    );
     assert_eq!(result, None);
 }
 
@@ -177,7 +182,7 @@ const TEST_DEFAULT_STATUS: Status = Status {
 
 #[test]
 fn saturating_apply_reduces_capacitor() {
-    let result = saturating_apply(TEST_DEFAULT_STATUS, Effect::Capacitor(-5));
+    let result = saturating_apply(TEST_DEFAULT_STATUS, RoundEffect::CapacitorDrain(5));
     assert_eq!(
         result,
         Status {
@@ -190,7 +195,7 @@ fn saturating_apply_reduces_capacitor() {
 
 #[test]
 fn saturating_apply_increases_capacitor() {
-    let result = saturating_apply(TEST_DEFAULT_STATUS, Effect::Capacitor(5));
+    let result = saturating_apply(TEST_DEFAULT_STATUS, RoundEffect::CapacitorRecharge(5));
     assert_eq!(
         result,
         Status {
@@ -203,7 +208,7 @@ fn saturating_apply_increases_capacitor() {
 
 #[test]
 fn saturating_apply_increases_armor() {
-    let result = saturating_apply(TEST_DEFAULT_STATUS, Effect::ArmorRepair(5));
+    let result = saturating_apply(TEST_DEFAULT_STATUS, RoundEffect::ArmorRepair(5));
     assert_eq!(
         result,
         Status {

@@ -146,7 +146,11 @@ pub fn advance(
 
     // provide ship/passive quality boni
     for ship in player_ships.values_mut() {
-        ship.status = super::qualities::apply_round(ship.status, &ship.fitting.qualities(statics));
+        if let Some(layout) = statics.ship_layouts.get(&ship.fitting.layout) {
+            if let Some(my_new_status) = apply_to_origin(ship.status, &layout.round_effects) {
+                ship.status = my_new_status;
+            }
+        }
     }
 
     *site_entities = cleanup_entities(statics, site_entities, player_ships)?;
