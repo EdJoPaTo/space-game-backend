@@ -57,7 +57,7 @@ pub fn advance(
                     .fitting
                     .slots_untargeted
                     .get(module.module_index as usize)
-                    .and_then(|o| statics.modules_untargeted.get(o))
+                    .map(|o| statics.modules_untargeted.get(o))
                 {
                     if let Some(my_new_status) =
                         apply_to_origin(origin_ship.status, &module.effects)
@@ -74,7 +74,7 @@ pub fn advance(
                     .fitting
                     .slots_targeted
                     .get(module.module_index as usize)
-                    .and_then(|o| statics.modules_targeted.get(o))
+                    .map(|o| statics.modules_targeted.get(o))
                 {
                     if let Some(target) = site_entities.get_mut(target_site_index) {
                         if let Some(origin_new_status) =
@@ -146,10 +146,9 @@ pub fn advance(
 
     // provide ship/passive quality boni
     for ship in player_ships.values_mut() {
-        if let Some(layout) = statics.ship_layouts.get(&ship.fitting.layout) {
-            if let Some(my_new_status) = apply_to_origin(ship.status, &layout.round_effects) {
-                ship.status = my_new_status;
-            }
+        let layout = statics.ship_layouts.get(&ship.fitting.layout);
+        if let Some(my_new_status) = apply_to_origin(ship.status, &layout.round_effects) {
+            ship.status = my_new_status;
         }
     }
 

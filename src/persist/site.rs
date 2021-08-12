@@ -31,7 +31,7 @@ pub fn read_sites(solarsystem: Solarsystem) -> Result<SitesNearPlanet> {
 }
 pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(Solarsystem, Info)> {
     let mut result = Vec::new();
-    for solarsystem in solarsystems.keys().copied() {
+    for solarsystem in solarsystems.data.keys().copied() {
         let sites = read_sites(solarsystem).expect("init at least created gate sites");
         for site in sites.values().flatten() {
             result.push((solarsystem, site.clone()));
@@ -94,7 +94,7 @@ fn position_of_site_unique(sites: &SitesNearPlanet, unique: &str) -> Option<(u8,
 }
 
 pub fn ensure_statics(solarsystems: &Solarsystems) -> Result<()> {
-    for (solarsystem, data) in solarsystems {
+    for (solarsystem, data) in &solarsystems.data {
         let mut sites = read_sites(*solarsystem).unwrap_or_default();
 
         // Purge stations and stargates from overview.
