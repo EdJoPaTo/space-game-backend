@@ -12,7 +12,7 @@ use typings::fixed::Statics;
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player;
 use typings::persist::player_location::{PlayerLocation, Station, Warp};
-use typings::persist::ship::{Ship, Status};
+use typings::persist::ship::Ship;
 use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
@@ -146,15 +146,7 @@ pub fn advance(
         }
     }
 
-    // provide ship/passive quality boni
-    for ship in player_ships.values_mut() {
-        let layout = statics.ship_layouts.get(&ship.fitting.layout);
-        if let Some(my_new_status) = apply_to_origin(ship.status, &layout.round_effects) {
-            ship.status = my_new_status;
-        }
-    }
-
-    *site_entities = cleanup_entities(statics, site_entities, player_ships)?;
+    *site_entities = finishup_entities(statics, site_entities, player_ships)?;
 
     // Add players in warp to here
     for player in players_warping_in {
@@ -192,8 +184,10 @@ fn remove_player_from_entities(site_entities: &mut Vec<SiteEntity>, player: &str
 }
 
 #[allow(clippy::option_if_let_else)]
-/// cleanup dead and ensure status is within ship layout limits
-fn cleanup_entities(
+/// - apply passive effects
+/// - ensure status is within ship layout limits
+/// - cleanup dead
+fn finishup_entities(
     statics: &Statics,
     before: &[SiteEntity],
     player_ships: &mut HashMap<player::Identifier, Ship>,
@@ -210,35 +204,37 @@ fn cleanup_entities(
                 }
             }
             SiteEntity::Npc(npc) => {
-                if let Some(status) = npc.status.min_layout(statics, &npc.fitting) {
-                    if status.is_alive() {
-                        remaining.push(SiteEntity::Npc(Npc {
-                            faction: npc.faction,
-                            fitting: npc.fitting.clone(),
-                            status,
-                        }));
-                    }
+                let layout = statics.ship_layouts.get(&npc.fitting.layout);
+                let mut status = npc.status;
+                // Apply ship passives
+                if let Some(new_status) = apply_to_origin(status, &layout.round_effects) {
+                    status = new_status;
+                }
+                // Ensure the ship is within its layout limits
+                let status = status.min_layout(statics, &npc.fitting);
+                if status.is_alive() {
+                    remaining.push(SiteEntity::Npc(Npc {
+                        faction: npc.faction,
+                        fitting: npc.fitting.clone(),
+                        status,
+                    }));
                 }
             }
             SiteEntity::Player(p) => {
                 let ship = player_ships
                     .get_mut(&p.id)
                     .expect("player has to be in player_ships");
-                ship.status = if let Some(status) = ship.status.min_layout(statics, &ship.fitting) {
-                    if status.is_alive() {
-                        remaining.push(entity.clone());
-                    }
-                    status
-                } else {
-                    Status {
-                        capacitor: 0,
-                        hitpoints_armor: 0,
-                        hitpoints_structure: 0,
-                    }
-                };
-
-                // TODO: when dead: location isnt site anymore
-                // TODO: when dead: ship is default now
+                let layout = statics.ship_layouts.get(&ship.fitting.layout);
+                // Apply ship passives
+                if let Some(new_status) = apply_to_origin(ship.status, &layout.round_effects) {
+                    ship.status = new_status;
+                }
+                // Ensure the ship is within its layout limits
+                ship.status = ship.status.min_layout(statics, &ship.fitting);
+                if ship.status.is_alive() {
+                    remaining.push(entity.clone());
+                }
+                // When dead another job will clean that up. The round itself doesnt care anymore about the player.
             }
         }
     }
