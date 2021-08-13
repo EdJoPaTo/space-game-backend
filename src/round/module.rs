@@ -2,25 +2,29 @@ use std::collections::HashMap;
 
 use typings::fixed::{module, Statics};
 use typings::persist::player;
-use typings::persist::ship::Ship;
+use typings::persist::ship::{Fitting, Ship, Status};
 use typings::persist::site_entity::SiteEntity;
 
 use super::effect::{apply_to_origin, apply_to_target};
 
-pub fn apply_untargeted(statics: &Statics, ship: &mut Ship, module_index: u8) {
-    if let Some(module) = ship
-        .fitting
+pub fn apply_untargeted(
+    statics: &Statics,
+    fitting: &Fitting,
+    status: &mut Status,
+    module_index: u8,
+) {
+    if let Some(module) = fitting
         .slots_untargeted
         .get(module_index as usize)
         .map(|o| statics.modules_untargeted.get(o))
     {
-        if let Some(my_new_status) = apply_to_origin(ship.status, &module.effects) {
-            ship.status = my_new_status;
+        if let Some(my_new_status) = apply_to_origin(*status, &module.effects) {
+            *status = my_new_status;
         }
     } else {
         println!(
-            "WARN: untargeted module not handled {} {:?}",
-            module_index, ship
+            "WARN: untargeted module not handled {} {:?} {:?}",
+            module_index, fitting, status
         );
     }
 }
@@ -28,24 +32,23 @@ pub fn apply_untargeted(statics: &Statics, ship: &mut Ship, module_index: u8) {
 #[must_use]
 pub fn apply_targeted_to_origin<'s>(
     statics: &'s Statics,
-    origin_ship: &mut Ship,
+    origin_fitting: &Fitting,
+    origin_status: &mut Status,
     module_index: u8,
 ) -> Option<&'s module::targeted::Details> {
-    if let Some(module) = origin_ship
-        .fitting
+    if let Some(module) = origin_fitting
         .slots_targeted
         .get(module_index as usize)
         .map(|o| statics.modules_targeted.get(o))
     {
-        if let Some(origin_new_status) = apply_to_origin(origin_ship.status, &module.effects_origin)
-        {
-            origin_ship.status = origin_new_status;
+        if let Some(origin_new_status) = apply_to_origin(*origin_status, &module.effects_origin) {
+            *origin_status = origin_new_status;
             return Some(module);
         }
     } else {
         println!(
-            "WARN: player targeted module not handled {} {:?}",
-            module_index, origin_ship
+            "WARN: player targeted module not handled {} {:?} {:?}",
+            module_index, origin_fitting, origin_status
         );
     }
     None

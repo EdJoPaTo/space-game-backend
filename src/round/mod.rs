@@ -21,7 +21,7 @@ mod warp_player;
 
 pub struct Outputs {}
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 pub fn advance(
     statics: &Statics,
     solarsystem: Solarsystem,
@@ -32,10 +32,12 @@ pub fn advance(
     player_ships: &mut HashMap<player::Identifier, Ship>,
     players_warping_in: &[player::Identifier],
 ) -> Outputs {
-    // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let sorted_instructions = instructions::sort(player_instructions);
+    let sorted_instructions = instructions::sort(
+        player_instructions,
+        &instructions::generate_for_npc(site_info, site_entities),
+    );
     if !sorted_instructions.is_empty() {
         println!(
             "site::handle {:>15} {:20} {:?}",
@@ -45,52 +47,83 @@ pub fn advance(
         );
     }
 
-    for (player, instruction) in &sorted_instructions {
-        let origin_ship = player_ships
-            .get_mut(player)
-            .expect("player_ships has to contain player with instructions");
-
+    for (actor, instruction) in &sorted_instructions {
         match instruction {
             SiteInstruction::ModuleUntargeted(module) => {
-                module::apply_untargeted(statics, origin_ship, module.module_index);
+                let (fitting, status) = match actor {
+                    instructions::Actor::Player(player) => {
+                        let ship = player_ships
+                            .get_mut(player)
+                            .expect("player_ships has to contain player with instructions");
+                        (&ship.fitting, &mut ship.status)
+                    }
+                    instructions::Actor::Npc(npc_index) => {
+                        let npc = entities::get_mut_npc(site_entities, *npc_index);
+                        (&npc.fitting, &mut npc.status)
+                    }
+                };
+                module::apply_untargeted(statics, fitting, status, module.module_index);
             }
             SiteInstruction::ModuleTargeted(module) => {
-                if let Some(target) = site_entities.get_mut(module.target_index_in_site as usize) {
-                    if let Some(m) =
-                        module::apply_targeted_to_origin(statics, origin_ship, module.module_index)
+                let m = {
+                    let (fitting, status) = match actor {
+                        instructions::Actor::Player(player) => {
+                            let ship = player_ships
+                                .get_mut(player)
+                                .expect("player_ships has to contain player with instructions");
+                            (&ship.fitting, &mut ship.status)
+                        }
+                        instructions::Actor::Npc(npc_index) => {
+                            let npc = entities::get_mut_npc(site_entities, *npc_index);
+                            (&npc.fitting, &mut npc.status)
+                        }
+                    };
+                    module::apply_targeted_to_origin(statics, fitting, status, module.module_index)
+                };
+                if let Some(m) = m {
+                    if let Some(target) =
+                        site_entities.get_mut(module.target_index_in_site as usize)
                     {
                         module::apply_targeted_to_target(player_ships, target, m);
                     }
                 }
             }
             SiteInstruction::Facility(facility) => {
-                // TODO: ensure still alive
-                match facility.service {
-                    Service::Dock => facility::dock(
-                        solarsystem,
-                        site_info,
-                        site_entities,
-                        player_locations,
-                        player,
-                    ),
-                    Service::Jump => facility::jump(
-                        solarsystem,
-                        site_info,
-                        site_entities,
-                        player_locations,
-                        player,
-                    ),
+                if let instructions::Actor::Player(player) = actor {
+                    // TODO: ensure still alive
+                    match facility.service {
+                        Service::Dock => facility::dock(
+                            solarsystem,
+                            site_info,
+                            site_entities,
+                            player_locations,
+                            player,
+                        ),
+                        Service::Jump => facility::jump(
+                            solarsystem,
+                            site_info,
+                            site_entities,
+                            player_locations,
+                            player,
+                        ),
+                    }
+                } else {
+                    panic!("only players can use facilities");
                 }
             }
             SiteInstruction::Warp(warp) => {
-                // TODO: ensure still alive
-                warp_player::out(
-                    solarsystem,
-                    site_entities,
-                    player_locations,
-                    player,
-                    &warp.site_unique,
-                );
+                if let instructions::Actor::Player(player) = actor {
+                    // TODO: ensure still alive
+                    warp_player::out(
+                        solarsystem,
+                        site_entities,
+                        player_locations,
+                        player,
+                        &warp.site_unique,
+                    );
+                } else {
+                    panic!("only players can warp");
+                }
             }
         }
     }
