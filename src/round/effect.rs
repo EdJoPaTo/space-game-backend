@@ -60,6 +60,18 @@ pub fn apply_to_origin(mut status: Status, effects: &[RoundEffect]) -> Option<St
     }
 }
 
+/// Applies effects to self when possible. Only effects that are possible are applied.
+///
+/// Ignores ship limitations! Status might have more armor than ship layout can have.
+pub fn apply_passives(mut status: Status, effects: &[RoundEffect]) -> Status {
+    for effects in effects {
+        if can_apply_to_origin(status, *effects) {
+            status = saturating_apply(status, *effects);
+        }
+    }
+    status
+}
+
 /// Applies effects in a saturating way. Example: Capacitor 2 - 5 → 0
 ///
 /// Ignores ship limitations! Status might have more armor than ship layout can have.
