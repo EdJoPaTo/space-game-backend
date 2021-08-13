@@ -6,16 +6,23 @@ use typings::persist::player;
 // TODO: allow for npc instructions to be added and sorted into the same ordered Vec<>
 
 pub fn sort(
-    instructions: &HashMap<player::Identifier, Vec<SiteInstruction>>,
+    player_instructions: &HashMap<player::Identifier, Vec<SiteInstruction>>,
 ) -> Vec<(player::Identifier, SiteInstruction)> {
     let mut result: Vec<(player::Identifier, SiteInstruction)> = Vec::new();
-    for (player, instructions) in instructions {
+    for (player, instructions) in player_instructions {
         for instruction in instructions {
             result.push((player.to_string(), instruction.clone()));
         }
     }
     result.sort_by(|a, b| a.1.cmp(&b.1));
     result
+}
+
+pub fn cleanup(player_instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>) {
+    // TODO: keep something like warp
+    for (_player, instructions) in player_instructions.iter_mut() {
+        instructions.clear();
+    }
 }
 
 #[cfg(test)]

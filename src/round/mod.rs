@@ -15,8 +15,8 @@ use self::effect::apply_passives;
 mod effect;
 mod entities;
 mod facility;
+mod instructions;
 mod module;
-mod site_instructions;
 mod warp_player;
 
 pub struct Outputs {}
@@ -27,7 +27,7 @@ pub fn advance(
     solarsystem: Solarsystem,
     site_info: &site::Info,
     site_entities: &mut Vec<SiteEntity>,
-    instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>,
+    player_instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>,
     player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
     player_ships: &mut HashMap<player::Identifier, Ship>,
     players_warping_in: &[player::Identifier],
@@ -35,7 +35,7 @@ pub fn advance(
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let sorted_instructions = site_instructions::sort(instructions);
+    let sorted_instructions = instructions::sort(player_instructions);
     if !sorted_instructions.is_empty() {
         println!(
             "site::handle {:>15} {:20} {:?}",
@@ -106,11 +106,7 @@ pub fn advance(
         players_warping_in,
     );
 
-    // Clear instructions
-    // TODO: keep something like warp
-    for (_player, instructions) in instructions.iter_mut() {
-        instructions.clear();
-    }
+    instructions::cleanup(player_instructions);
 
     Outputs {}
 }
