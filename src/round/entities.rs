@@ -1,3 +1,4 @@
+use typings::persist::player;
 use typings::persist::site_entity::{Npc, SiteEntity};
 
 pub fn player_pos(site_entities: &[SiteEntity], player: &str) -> Option<usize> {
@@ -21,4 +22,18 @@ pub fn get_mut_npc(site_entities: &mut Vec<SiteEntity>, npc_index: usize) -> &mu
     } else {
         panic!("index is not an npc")
     }
+}
+
+pub fn get_players(site_entities: &[SiteEntity]) -> Vec<(usize, player::Identifier)> {
+    site_entities
+        .iter()
+        .enumerate()
+        .filter_map(|(i, entity)| {
+            if let SiteEntity::Player(player) = entity {
+                Some((i, player.id.to_string()))
+            } else {
+                None
+            }
+        })
+        .collect()
 }

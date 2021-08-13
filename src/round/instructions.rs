@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use typings::fixed::npc_faction::NpcFaction;
-use typings::frontrw::site_instruction::SiteInstruction;
+use typings::frontrw::site_instruction::{ModuleTargeted, SiteInstruction};
 use typings::persist::site_entity::SiteEntity;
 use typings::persist::{player, site};
 
-#[cfg(test)]
-use typings::frontrw::site_instruction::{ModuleTargeted, ModuleUntargeted, Warp};
+use super::entities;
 
 // TODO: allow for npc instructions to be added and sorted into the same ordered Vec<>
 
@@ -36,20 +35,31 @@ pub fn sort(
     result
 }
 
+#[allow(clippy::cast_possible_truncation)]
 pub fn generate_for_npc(
     _site_info: &site::Info,
     site_entities: &[SiteEntity],
 ) -> Vec<(usize, Vec<SiteInstruction>)> {
-    let result = Vec::new();
-    for (_index, entity) in site_entities.iter().enumerate() {
+    let mut result = Vec::new();
+    for (site_index, entity) in site_entities.iter().enumerate() {
         if let SiteEntity::Npc(npc) = entity {
-            #[allow(clippy::match_same_arms)]
             match npc.faction {
                 NpcFaction::Guards => {
                     // TODO: attack bad players
                 }
                 NpcFaction::Pirates => {
-                    // TODO: attack random player
+                    let mut instructions = Vec::new();
+                    if let Some((target_index, _target_player)) =
+                        entities::get_players(site_entities).first()
+                    {
+                        for module_index in 0..npc.fitting.slots_targeted.len() {
+                            instructions.push(SiteInstruction::ModuleTargeted(ModuleTargeted {
+                                target_index_in_site: *target_index as u8,
+                                module_index: module_index as u8,
+                            }));
+                        }
+                    }
+                    result.push((site_index, instructions));
                 }
             }
         }
@@ -70,10 +80,12 @@ fn player_sorted_works() {
     example.insert(
         "player1".to_string(),
         vec![
-            SiteInstruction::Warp(Warp {
+            SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
                 site_unique: "666".to_string(),
             }),
-            SiteInstruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 }),
+            SiteInstruction::ModuleUntargeted(
+                typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 },
+            ),
         ],
     );
     example.insert(
@@ -89,7 +101,9 @@ fn player_sorted_works() {
         sorted[0],
         (
             Actor::Player("player1".to_string()),
-            SiteInstruction::ModuleUntargeted(ModuleUntargeted { module_index: 0 })
+            SiteInstruction::ModuleUntargeted(
+                typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 }
+            )
         )
     );
     assert_eq!(
@@ -106,7 +120,7 @@ fn player_sorted_works() {
         sorted[2],
         (
             Actor::Player("player1".to_string()),
-            SiteInstruction::Warp(Warp {
+            SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
                 site_unique: "666".to_string()
             })
         )
