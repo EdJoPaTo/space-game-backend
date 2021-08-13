@@ -6,13 +6,28 @@ use typings::persist::ship::{Fitting, Ship, Status};
 use typings::persist::site_entity::SiteEntity;
 
 use super::effect::{apply_to_origin, apply_to_target};
+use super::entities;
+use super::instructions::Actor;
 
 pub fn apply_untargeted(
     statics: &Statics,
-    fitting: &Fitting,
-    status: &mut Status,
+    site_entities: &mut Vec<SiteEntity>,
+    player_ships: &mut HashMap<player::Identifier, Ship>,
+    actor: &Actor,
     module_index: u8,
 ) {
+    let (fitting, status) = match actor {
+        Actor::Player(player) => {
+            let ship = player_ships
+                .get_mut(player)
+                .expect("player_ships has to contain player with instructions");
+            (&ship.fitting, &mut ship.status)
+        }
+        Actor::Npc(npc_index) => {
+            let npc = entities::get_mut_npc(site_entities, *npc_index);
+            (&npc.fitting, &mut npc.status)
+        }
+    };
     if let Some(module) = fitting
         .slots_untargeted
         .get(module_index as usize)
@@ -29,8 +44,38 @@ pub fn apply_untargeted(
     }
 }
 
+pub fn apply_targeted(
+    statics: &Statics,
+    site_entities: &mut Vec<SiteEntity>,
+    player_ships: &mut HashMap<player::Identifier, Ship>,
+    actor: &Actor,
+    module_index: u8,
+    target_index_in_site: u8,
+) {
+    let m = {
+        let (fitting, status) = match actor {
+            Actor::Player(player) => {
+                let ship = player_ships
+                    .get_mut(player)
+                    .expect("player_ships has to contain player with instructions");
+                (&ship.fitting, &mut ship.status)
+            }
+            Actor::Npc(npc_index) => {
+                let npc = entities::get_mut_npc(site_entities, *npc_index);
+                (&npc.fitting, &mut npc.status)
+            }
+        };
+        apply_targeted_to_origin(statics, fitting, status, module_index)
+    };
+    if let Some(m) = m {
+        if let Some(target) = site_entities.get_mut(target_index_in_site as usize) {
+            apply_targeted_to_target(player_ships, target, m);
+        }
+    }
+}
+
 #[must_use]
-pub fn apply_targeted_to_origin<'s>(
+fn apply_targeted_to_origin<'s>(
     statics: &'s Statics,
     origin_fitting: &Fitting,
     origin_status: &mut Status,
@@ -54,7 +99,7 @@ pub fn apply_targeted_to_origin<'s>(
     None
 }
 
-pub fn apply_targeted_to_target(
+fn apply_targeted_to_target(
     player_ships: &mut HashMap<player::Identifier, Ship>,
     target: &mut SiteEntity,
     module: &module::targeted::Details,

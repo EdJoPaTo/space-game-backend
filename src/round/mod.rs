@@ -11,6 +11,7 @@ use typings::persist::site;
 use typings::persist::site_entity::{Npc, SiteEntity};
 
 use self::effect::apply_passives;
+use self::instructions::Actor;
 
 mod effect;
 mod entities;
@@ -21,7 +22,7 @@ mod warp_player;
 
 pub struct Outputs {}
 
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+#[allow(clippy::too_many_arguments)]
 pub fn advance(
     statics: &Statics,
     solarsystem: Solarsystem,
@@ -50,46 +51,26 @@ pub fn advance(
     for (actor, instruction) in &sorted_instructions {
         match instruction {
             SiteInstruction::ModuleUntargeted(module) => {
-                let (fitting, status) = match actor {
-                    instructions::Actor::Player(player) => {
-                        let ship = player_ships
-                            .get_mut(player)
-                            .expect("player_ships has to contain player with instructions");
-                        (&ship.fitting, &mut ship.status)
-                    }
-                    instructions::Actor::Npc(npc_index) => {
-                        let npc = entities::get_mut_npc(site_entities, *npc_index);
-                        (&npc.fitting, &mut npc.status)
-                    }
-                };
-                module::apply_untargeted(statics, fitting, status, module.module_index);
+                module::apply_untargeted(
+                    statics,
+                    site_entities,
+                    player_ships,
+                    actor,
+                    module.module_index,
+                );
             }
             SiteInstruction::ModuleTargeted(module) => {
-                let m = {
-                    let (fitting, status) = match actor {
-                        instructions::Actor::Player(player) => {
-                            let ship = player_ships
-                                .get_mut(player)
-                                .expect("player_ships has to contain player with instructions");
-                            (&ship.fitting, &mut ship.status)
-                        }
-                        instructions::Actor::Npc(npc_index) => {
-                            let npc = entities::get_mut_npc(site_entities, *npc_index);
-                            (&npc.fitting, &mut npc.status)
-                        }
-                    };
-                    module::apply_targeted_to_origin(statics, fitting, status, module.module_index)
-                };
-                if let Some(m) = m {
-                    if let Some(target) =
-                        site_entities.get_mut(module.target_index_in_site as usize)
-                    {
-                        module::apply_targeted_to_target(player_ships, target, m);
-                    }
-                }
+                module::apply_targeted(
+                    statics,
+                    site_entities,
+                    player_ships,
+                    actor,
+                    module.module_index,
+                    module.target_index_in_site,
+                );
             }
             SiteInstruction::Facility(facility) => {
-                if let instructions::Actor::Player(player) = actor {
+                if let Actor::Player(player) = actor {
                     // TODO: ensure still alive
                     match facility.service {
                         Service::Dock => facility::dock(
@@ -112,7 +93,7 @@ pub fn advance(
                 }
             }
             SiteInstruction::Warp(warp) => {
-                if let instructions::Actor::Player(player) = actor {
+                if let Actor::Player(player) = actor {
                     // TODO: ensure still alive
                     warp_player::out(
                         solarsystem,
