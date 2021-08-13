@@ -5,6 +5,7 @@ use typings::fixed::Statics;
 
 mod ship;
 mod site;
+mod sites;
 
 pub fn start(statics: &Statics) -> anyhow::Result<()> {
     once(statics)?;
@@ -27,5 +28,6 @@ async fn do_loop() -> ! {
 fn once(statics: &Statics) -> anyhow::Result<()> {
     site::all(statics)?;
     ship::all()?;
+    sites::all(statics)?;
     Ok(())
 }
