@@ -11,7 +11,10 @@ use typings::persist::ship::Ship;
 use typings::persist::site::{self, Info};
 use typings::persist::site_entity::{Npc, Player, SiteEntity};
 
-use super::effect::{apply_to_origin, apply_to_target};
+use effect::{apply_to_origin, apply_to_target};
+
+mod effect;
+mod site_instructions;
 
 pub struct Outputs {}
 
@@ -29,7 +32,7 @@ pub fn advance(
     // TODO: npcs need instructions too…
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let sorted_instructions = super::site_instructions::sort(instructions);
+    let sorted_instructions = site_instructions::sort(instructions);
     if !sorted_instructions.is_empty() {
         println!(
             "site::handle {:>15} {:20} {:?}",
