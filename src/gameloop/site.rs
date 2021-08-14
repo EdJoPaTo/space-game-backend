@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
+use typings::persist::player::Player;
 use typings::persist::player_location::PlayerLocation;
+use typings::persist::site;
 use typings::persist::site_entity::SiteEntity;
-use typings::persist::{player, site};
 
 use crate::persist::player::{
     read_all_player_locations, read_player_location, read_player_ship,
@@ -32,7 +33,7 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
         let players_warping_in = players_in_warp
             .iter()
             .filter(|o| o.1 == solarsystem && o.2 == site_info.site_unique)
-            .map(|o| o.0.to_string())
+            .map(|o| o.0)
             .collect::<Vec<_>>();
         if let Err(err) = handle(statics, solarsystem, &site_info, &players_warping_in) {
             some_error = true;
@@ -50,7 +51,7 @@ fn handle(
     statics: &Statics,
     solarsystem: Solarsystem,
     site_info: &site::Info,
-    players_warping_in: &[player::Identifier],
+    players_warping_in: &[Player],
 ) -> anyhow::Result<()> {
     let site_unique = &site_info.site_unique;
 
@@ -60,7 +61,7 @@ fn handle(
         let mut result = Vec::new();
         for entity in &site_entities {
             if let SiteEntity::Player(p) = entity {
-                result.push(p.id.to_string());
+                result.push(*p);
             }
         }
         result
@@ -69,14 +70,15 @@ fn handle(
         players_in_site
             .iter()
             .chain(players_warping_in)
+            .copied()
             .collect::<Vec<_>>()
     };
 
     let mut instructions = {
         let mut result = HashMap::new();
-        for player in &players_in_site {
+        for player in players_in_site {
             let instructions = read_player_site_instructions(player);
-            result.insert(player.to_string(), instructions);
+            result.insert(player, instructions);
         }
         result
     };
@@ -86,9 +88,9 @@ fn handle(
 
     for player in all_players_involved {
         let ship = read_player_ship(player);
-        player_ships.insert(player.to_string(), ship);
+        player_ships.insert(player, ship);
         let location = read_player_location(player);
-        player_locations.insert(player.to_string(), location);
+        player_locations.insert(player, location);
     }
 
     let _outputs = advance(
@@ -110,25 +112,28 @@ fn handle(
         some_error = true;
         eprintln!("{} write_site_entities {}", error_prefix, err);
     }
-    for (player, instructions) in &instructions {
-        if let Err(err) = write_player_site_instructions(player, instructions) {
+    for (player, instructions) in instructions {
+        if let Err(err) = write_player_site_instructions(player, &instructions) {
             some_error = true;
             eprintln!(
-                "{} write_player_instructions {} {}",
+                "{} write_player_instructions {:?} {}",
                 error_prefix, player, err
             );
         }
     }
-    for (player, ship) in &player_ships {
-        if let Err(err) = write_player_ship(player, ship) {
+    for (player, ship) in player_ships {
+        if let Err(err) = write_player_ship(player, &ship) {
             some_error = true;
-            eprintln!("{} write_player_ship {} {}", error_prefix, player, err);
+            eprintln!("{} write_player_ship {:?} {}", error_prefix, player, err);
         }
     }
-    for (player, location) in &player_locations {
-        if let Err(err) = write_player_location(player, location) {
+    for (player, location) in player_locations {
+        if let Err(err) = write_player_location(player, &location) {
             some_error = true;
-            eprintln!("{} write_player_location {} {}", error_prefix, player, err);
+            eprintln!(
+                "{} write_player_location {:?} {}",
+                error_prefix, player, err
+            );
         }
     }
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use typings::fixed::{module, Statics};
-use typings::persist::player;
+use typings::persist::player::Player;
 use typings::persist::ship::{Fitting, Ship, Status};
 use typings::persist::site_entity::SiteEntity;
 
@@ -12,7 +12,7 @@ use super::instructions::Actor;
 pub fn apply_untargeted(
     statics: &Statics,
     site_entities: &mut Vec<SiteEntity>,
-    player_ships: &mut HashMap<player::Identifier, Ship>,
+    player_ships: &mut HashMap<Player, Ship>,
     actor: &Actor,
     module_index: u8,
 ) {
@@ -47,7 +47,7 @@ pub fn apply_untargeted(
 pub fn apply_targeted(
     statics: &Statics,
     site_entities: &mut Vec<SiteEntity>,
-    player_ships: &mut HashMap<player::Identifier, Ship>,
+    player_ships: &mut HashMap<Player, Ship>,
     actor: &Actor,
     module_index: u8,
     target_index_in_site: u8,
@@ -100,7 +100,7 @@ fn apply_targeted_to_origin<'s>(
 }
 
 fn apply_targeted_to_target(
-    player_ships: &mut HashMap<player::Identifier, Ship>,
+    player_ships: &mut HashMap<Player, Ship>,
     target: &mut SiteEntity,
     module: &module::targeted::Details,
 ) {
@@ -114,7 +114,7 @@ fn apply_targeted_to_target(
         }
         SiteEntity::Player(player) => {
             let target_ship = player_ships
-                .get_mut(&player.id)
+                .get_mut(player)
                 .expect("player in site has to be in player_ships");
             target_ship.status = apply_to_target(target_ship.status, &module.effects_target);
         }

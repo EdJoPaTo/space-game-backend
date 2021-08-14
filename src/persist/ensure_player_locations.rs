@@ -1,7 +1,7 @@
 use typings::fixed::site::Kind;
 use typings::fixed::Statics;
 use typings::persist::player_location::PlayerLocation;
-use typings::persist::site_entity::{Player, SiteEntity};
+use typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::write_player_location;
 use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
@@ -33,15 +33,13 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
                         .expect("site exists so its entities should too");
                     let site_knows = entities
                         .iter()
-                        .any(|o| matches!(o, SiteEntity::Player(p) if &p.id == player));
+                        .any(|o| matches!(o, SiteEntity::Player(p) if p == player));
                     if !site_knows {
                         eprintln!(
-                            "    player expected to be in site but site didnt knew: {} {} {:?}",
+                            "    player expected to be in site but site didnt knew: {:?} {} {:?}",
                             player, solarsystem, site_info
                         );
-                        entities.push(SiteEntity::Player(Player {
-                            id: player.to_string(),
-                        }));
+                        entities.push(SiteEntity::Player(*player));
                         write_site_entities(*solarsystem, &site_info.site_unique, &entities)?;
                     }
                     true
@@ -53,7 +51,7 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
         if !location_exists {
             let solarsystem = location.solarsystem();
             eprintln!(
-                "    player expected to be in an non existing site. Bring player to existing site. {} was here: {:?}",
+                "    player expected to be in an non existing site. Bring player to existing site. {:?} was here: {:?}",
                 player, location
             );
             let first_safe = all_sites
@@ -61,7 +59,7 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
                 .find(|o| o.0 == solarsystem && matches!(o.1.kind, Kind::Station | Kind::Stargate))
                 .expect("system shouldve had at least a stargate");
             write_player_location(
-                player,
+                *player,
                 &PlayerLocation::Warp(typings::persist::player_location::Warp {
                     solarsystem,
                     towards_site_unique: first_safe.1.site_unique.to_string(),

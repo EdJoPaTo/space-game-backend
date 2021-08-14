@@ -4,7 +4,7 @@ use typings::fixed::facility::Service;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
 use typings::frontrw::site_instruction::SiteInstruction;
-use typings::persist::player;
+use typings::persist::player::Player;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
 use typings::persist::site;
@@ -28,10 +28,10 @@ pub fn advance(
     solarsystem: Solarsystem,
     site_info: &site::Info,
     site_entities: &mut Vec<SiteEntity>,
-    player_instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>,
-    player_locations: &mut HashMap<player::Identifier, PlayerLocation>,
-    player_ships: &mut HashMap<player::Identifier, Ship>,
-    players_warping_in: &[player::Identifier],
+    player_instructions: &mut HashMap<Player, Vec<SiteInstruction>>,
+    player_locations: &mut HashMap<Player, PlayerLocation>,
+    player_ships: &mut HashMap<Player, Ship>,
+    players_warping_in: &[Player],
 ) -> Outputs {
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
@@ -70,7 +70,7 @@ pub fn advance(
                 );
             }
             SiteInstruction::Facility(facility) => {
-                if let Actor::Player(player) = actor {
+                if let Actor::Player(player) = *actor {
                     // TODO: ensure still alive
                     match facility.service {
                         Service::Dock => facility::dock(
@@ -93,7 +93,7 @@ pub fn advance(
                 }
             }
             SiteInstruction::Warp(warp) => {
-                if let Actor::Player(player) = actor {
+                if let Actor::Player(player) = *actor {
                     // TODO: ensure still alive
                     warp_player::out(
                         solarsystem,
@@ -131,7 +131,7 @@ pub fn advance(
 fn finishup_entities(
     statics: &Statics,
     before: &[SiteEntity],
-    player_ships: &mut HashMap<player::Identifier, Ship>,
+    player_ships: &mut HashMap<Player, Ship>,
 ) -> Vec<SiteEntity> {
     let mut remaining = Vec::new();
     for entity in before {
@@ -158,9 +158,9 @@ fn finishup_entities(
                     }));
                 }
             }
-            SiteEntity::Player(p) => {
+            SiteEntity::Player(player) => {
                 let ship = player_ships
-                    .get_mut(&p.id)
+                    .get_mut(player)
                     .expect("player has to be in player_ships");
                 let layout = statics.ship_layouts.get(&ship.fitting.layout);
                 ship.status = apply_passives(ship.status, &layout.round_effects);

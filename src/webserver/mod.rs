@@ -63,15 +63,15 @@ where
 
 #[allow(clippy::unused_async)]
 async fn player_location(req: Request<()>) -> tide::Result {
-    let player = req.param("player")?.to_string();
-    let body = read_player_location(&player);
+    let player = req.param("player")?.parse()?;
+    let body = read_player_location(player);
     tide_json_response(&body)
 }
 
 #[allow(clippy::unused_async)]
 async fn player_ship(req: Request<()>) -> tide::Result {
-    let player = req.param("player")?.to_string();
-    let body = read_player_ship(&player);
+    let player = req.param("player")?.parse()?;
+    let body = read_player_ship(player);
     tide_json_response(&body)
 }
 
@@ -93,38 +93,38 @@ async fn sites(req: Request<()>) -> tide::Result {
 
 #[allow(clippy::unused_async)]
 async fn station_assets(req: Request<()>) -> tide::Result {
-    let player = req.param("player")?.to_string();
+    let player = req.param("player")?.parse()?;
     let solarsystem = req.param("solarsystem")?.parse()?;
     let station = req.param("station")?.parse()?;
-    let body = read_station_assets(&player, solarsystem, station);
+    let body = read_station_assets(player, solarsystem, station);
     tide_json_response(&body)
 }
 
 #[allow(clippy::unused_async)]
 async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
-    let player = req.param("player")?.to_string();
+    let player = req.param("player")?.parse()?;
     let instructions = req.body_json::<Vec<SiteInstruction>>().await?;
     println!(
-        "SiteInstructions for player {} ({}): {:?}",
+        "SiteInstructions for player {:?} ({}): {:?}",
         player,
         instructions.len(),
         instructions
     );
-    write_player_site_instructions(&player, &instructions)?;
+    write_player_site_instructions(player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
 }
 
 #[allow(clippy::unused_async)]
 async fn post_station_instructions(mut req: Request<()>) -> tide::Result {
-    let player = req.param("player")?.to_string();
+    let player = req.param("player")?.parse()?;
     let instructions = req.body_json::<Vec<StationInstruction>>().await?;
     println!(
-        "StationInstructions for player {} ({}): {:?}",
+        "StationInstructions for player {:?} ({}): {:?}",
         player,
         instructions.len(),
         instructions
     );
     let statics = Statics::default();
-    station::do_instructions(&statics, &player, &instructions)?;
+    station::do_instructions(&statics, player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
 }

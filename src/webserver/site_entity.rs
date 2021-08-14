@@ -19,9 +19,9 @@ pub fn read(statics: &Statics, solarsystem: Solarsystem, site_unique: &str) -> V
             typings::persist::site_entity::SiteEntity::Npc(info) => {
                 SiteEntity::Npc(Npc::new(statics, info))
             }
-            typings::persist::site_entity::SiteEntity::Player(info) => {
-                let ship = read_player_ship(&info.id);
-                SiteEntity::Player(Player::new(statics, info, &ship))
+            typings::persist::site_entity::SiteEntity::Player(player) => {
+                let ship = read_player_ship(*player);
+                SiteEntity::Player(Player::new(statics, *player, &ship))
             }
         });
     }

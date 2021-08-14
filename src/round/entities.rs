@@ -1,13 +1,13 @@
-use typings::persist::player;
+use typings::persist::player::Player;
 use typings::persist::site_entity::{Npc, SiteEntity};
 
-pub fn player_pos(site_entities: &[SiteEntity], player: &str) -> Option<usize> {
+pub fn player_pos(site_entities: &[SiteEntity], player: Player) -> Option<usize> {
     site_entities
         .iter()
-        .position(|o| matches!(o, SiteEntity::Player(p) if p.id == player))
+        .position(|o| matches!(o, SiteEntity::Player(p) if p == &player))
 }
 
-pub fn remove_player(site_entities: &mut Vec<SiteEntity>, player: &str) {
+pub fn remove_player(site_entities: &mut Vec<SiteEntity>, player: Player) {
     if let Some(index) = player_pos(site_entities, player) {
         site_entities.remove(index);
     }
@@ -24,13 +24,13 @@ pub fn get_mut_npc(site_entities: &mut Vec<SiteEntity>, npc_index: usize) -> &mu
     }
 }
 
-pub fn get_players(site_entities: &[SiteEntity]) -> Vec<(usize, player::Identifier)> {
+pub fn get_players(site_entities: &[SiteEntity]) -> Vec<(usize, Player)> {
     site_entities
         .iter()
         .enumerate()
         .filter_map(|(i, entity)| {
             if let SiteEntity::Player(player) = entity {
-                Some((i, player.id.to_string()))
+                Some((i, *player))
             } else {
                 None
             }

@@ -2,28 +2,29 @@ use std::collections::HashMap;
 
 use typings::fixed::npc_faction::NpcFaction;
 use typings::frontrw::site_instruction::{ModuleTargeted, SiteInstruction};
+use typings::persist::player::Player;
+use typings::persist::site;
 use typings::persist::site_entity::SiteEntity;
-use typings::persist::{player, site};
 
 use super::entities;
 
 // TODO: allow for npc instructions to be added and sorted into the same ordered Vec<>
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Actor {
-    Player(player::Identifier),
+    Player(Player),
     /// Index within the site
     Npc(usize),
 }
 
 pub fn sort(
-    player_instructions: &HashMap<player::Identifier, Vec<SiteInstruction>>,
+    player_instructions: &HashMap<Player, Vec<SiteInstruction>>,
     npc_instructions: &[(usize, Vec<SiteInstruction>)],
 ) -> Vec<(Actor, SiteInstruction)> {
     let mut result: Vec<(Actor, SiteInstruction)> = Vec::new();
     for (player, instructions) in player_instructions {
         for instruction in instructions {
-            result.push((Actor::Player(player.to_string()), instruction.clone()));
+            result.push((Actor::Player(*player), instruction.clone()));
         }
     }
     for (npc, instructions) in npc_instructions {
@@ -67,7 +68,7 @@ pub fn generate_for_npc(
     result
 }
 
-pub fn cleanup(player_instructions: &mut HashMap<player::Identifier, Vec<SiteInstruction>>) {
+pub fn cleanup(player_instructions: &mut HashMap<Player, Vec<SiteInstruction>>) {
     // TODO: keep something like warp
     for (_player, instructions) in player_instructions.iter_mut() {
         instructions.clear();
@@ -78,7 +79,7 @@ pub fn cleanup(player_instructions: &mut HashMap<player::Identifier, Vec<SiteIns
 fn player_sorted_works() {
     let mut example = HashMap::new();
     example.insert(
-        "player1".to_string(),
+        Player::Telegram(1),
         vec![
             SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
                 site_unique: "666".to_string(),
@@ -89,7 +90,7 @@ fn player_sorted_works() {
         ],
     );
     example.insert(
-        "player2".to_string(),
+        Player::Telegram(2),
         vec![SiteInstruction::ModuleTargeted(ModuleTargeted {
             module_index: 0,
             target_index_in_site: 0,
@@ -100,7 +101,7 @@ fn player_sorted_works() {
     assert_eq!(
         sorted[0],
         (
-            Actor::Player("player1".to_string()),
+            Actor::Player(Player::Telegram(1)),
             SiteInstruction::ModuleUntargeted(
                 typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 }
             )
@@ -109,7 +110,7 @@ fn player_sorted_works() {
     assert_eq!(
         sorted[1],
         (
-            Actor::Player("player2".to_string()),
+            Actor::Player(Player::Telegram(2)),
             SiteInstruction::ModuleTargeted(ModuleTargeted {
                 module_index: 0,
                 target_index_in_site: 0,
@@ -119,7 +120,7 @@ fn player_sorted_works() {
     assert_eq!(
         sorted[2],
         (
-            Actor::Player("player1".to_string()),
+            Actor::Player(Player::Telegram(1)),
             SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
                 site_unique: "666".to_string()
             })
