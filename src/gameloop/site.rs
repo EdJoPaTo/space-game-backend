@@ -4,7 +4,7 @@ use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
 use typings::persist::player::Player;
 use typings::persist::player_location::PlayerLocation;
-use typings::persist::site;
+use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::{
@@ -24,18 +24,18 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
         match location {
             PlayerLocation::Site(_) | PlayerLocation::Station(_) => {}
             PlayerLocation::Warp(warp) => {
-                players_in_warp.push((player, solarsystem, warp.towards_site_unique));
+                players_in_warp.push((player, solarsystem, warp.towards));
             }
         }
     }
 
-    for (solarsystem, site_info) in read_sites_everywhere(&statics.solarsystems) {
+    for (solarsystem, site) in read_sites_everywhere(&statics.solarsystems) {
         let players_warping_in = players_in_warp
             .iter()
-            .filter(|o| o.1 == solarsystem && o.2 == site_info.site_unique)
+            .filter(|o| o.1 == solarsystem && o.2 == site)
             .map(|o| o.0)
             .collect::<Vec<_>>();
-        if let Err(err) = handle(statics, solarsystem, &site_info, &players_warping_in) {
+        if let Err(err) = handle(statics, solarsystem, site, &players_warping_in) {
             some_error = true;
             eprintln!("ERROR gameloop::site::handle {}", err);
         }
@@ -50,12 +50,10 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 fn handle(
     statics: &Statics,
     solarsystem: Solarsystem,
-    site_info: &site::Info,
+    site: Site,
     players_warping_in: &[Player],
 ) -> anyhow::Result<()> {
-    let site_unique = &site_info.site_unique;
-
-    let mut site_entities = read_site_entities(solarsystem, site_unique).unwrap_or_default();
+    let mut site_entities = read_site_entities(solarsystem, site).unwrap_or_default();
 
     let players_in_site = {
         let mut result = Vec::new();
@@ -96,7 +94,7 @@ fn handle(
     let _outputs = advance(
         statics,
         solarsystem,
-        site_info,
+        site,
         &mut site_entities,
         &mut instructions,
         &mut player_locations,
@@ -106,9 +104,9 @@ fn handle(
 
     // Nothing after this point is allowed to fail the rest -> Data has to be saved
     let mut some_error = false;
-    let error_prefix = format!("ERROR handle site {} {}", solarsystem, site_unique);
+    let error_prefix = format!("ERROR handle site {} {:?}", solarsystem, site);
 
-    if let Err(err) = write_site_entities(solarsystem, site_unique, &site_entities) {
+    if let Err(err) = write_site_entities(solarsystem, site, &site_entities) {
         some_error = true;
         eprintln!("{} write_site_entities {}", error_prefix, err);
     }
@@ -128,7 +126,7 @@ fn handle(
         }
     }
     for (player, location) in player_locations {
-        if let Err(err) = write_player_location(player, &location) {
+        if let Err(err) = write_player_location(player, location) {
             some_error = true;
             eprintln!(
                 "{} write_player_location {:?} {}",

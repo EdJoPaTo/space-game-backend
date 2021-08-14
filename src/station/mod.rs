@@ -2,8 +2,8 @@ use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
 use typings::frontrw::station_instruction::StationInstruction;
 use typings::persist::player::Player;
-use typings::persist::player_location::PlayerLocation;
-use typings::persist::site::{self, Info};
+use typings::persist::player_location::{PlayerLocation, PlayerLocationSite};
+use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::{
@@ -58,18 +58,15 @@ fn do_instruction(
                 ));
             }
 
-            let site_unique = Info::generate_station(solarsystem, station).site_unique;
+            let site = Site::Station(station);
 
-            let mut entities = read_site_entities(solarsystem, &site_unique)?;
+            let mut entities = read_site_entities(solarsystem, site)?;
             entities.push(SiteEntity::Player(player));
-            write_site_entities(solarsystem, &site_unique, &entities)?;
+            write_site_entities(solarsystem, site, &entities)?;
 
             write_player_location(
                 player,
-                &PlayerLocation::Site(site::Identifier {
-                    solarsystem,
-                    site_unique,
-                }),
+                PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
         }
     }

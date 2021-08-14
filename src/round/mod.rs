@@ -7,7 +7,7 @@ use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player::Player;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
-use typings::persist::site;
+use typings::persist::site::Site;
 use typings::persist::site_entity::{Npc, SiteEntity};
 
 use self::effect::apply_passives;
@@ -26,7 +26,7 @@ pub struct Outputs {}
 pub fn advance(
     statics: &Statics,
     solarsystem: Solarsystem,
-    site_info: &site::Info,
+    site: Site,
     site_entities: &mut Vec<SiteEntity>,
     player_instructions: &mut HashMap<Player, Vec<SiteInstruction>>,
     player_locations: &mut HashMap<Player, PlayerLocation>,
@@ -37,13 +37,13 @@ pub fn advance(
 
     let sorted_instructions = instructions::sort(
         player_instructions,
-        &instructions::generate_for_npc(site_info, site_entities),
+        &instructions::generate_for_npc(site, site_entities),
     );
     if !sorted_instructions.is_empty() {
         println!(
-            "site::handle {:>15} {:20} {:?}",
+            "site::handle {:>15} {:?} {:?}",
             solarsystem.to_string(),
-            site_info.site_unique,
+            site,
             sorted_instructions
         );
     }
@@ -75,14 +75,14 @@ pub fn advance(
                     match facility.service {
                         Service::Dock => facility::dock(
                             solarsystem,
-                            site_info,
+                            site,
                             site_entities,
                             player_locations,
                             player,
                         ),
                         Service::Jump => facility::jump(
                             solarsystem,
-                            site_info,
+                            site,
                             site_entities,
                             player_locations,
                             player,
@@ -100,7 +100,7 @@ pub fn advance(
                         site_entities,
                         player_locations,
                         player,
-                        &warp.site_unique,
+                        warp.target,
                     );
                 } else {
                     panic!("only players can warp");
@@ -114,7 +114,7 @@ pub fn advance(
     // Add players in warp to here
     warp_player::in_site(
         solarsystem,
-        site_info,
+        site,
         site_entities,
         player_locations,
         players_warping_in,

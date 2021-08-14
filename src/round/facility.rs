@@ -2,43 +2,38 @@ use std::collections::HashMap;
 
 use typings::fixed::solarsystem::Solarsystem;
 use typings::persist::player::Player;
-use typings::persist::player_location::{PlayerLocation, Station, Warp};
-use typings::persist::site::{self, Info};
+use typings::persist::player_location::{
+    PlayerLocation, PlayerLocationStation, PlayerLocationWarp,
+};
+use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use super::entities;
 
 pub fn jump(
-    solarsystem: Solarsystem,
-    site_info: &site::Info,
+    origin_solarsystem: Solarsystem,
+    origin_site: Site,
     site_entities: &mut Vec<SiteEntity>,
     player_locations: &mut HashMap<Player, PlayerLocation>,
     player: Player,
 ) {
-    let target_solarsystem = site_info
-        .site_unique
-        .trim_start_matches("stargate")
-        .parse()
-        .unwrap_or_else(|_| {
-            panic!(
-                "stargate site_unique is formatted differently than expected {}",
-                site_info.site_unique
-            );
-        });
-    let target_site = Info::generate_stargate(solarsystem);
-    entities::remove_player(site_entities, player);
-    player_locations.insert(
-        player,
-        PlayerLocation::Warp(Warp {
-            solarsystem: target_solarsystem,
-            towards_site_unique: target_site.site_unique,
-        }),
-    );
+    if let Site::Stargate(target_solarsystem) = origin_site {
+        entities::remove_player(site_entities, player);
+        player_locations.insert(
+            player,
+            PlayerLocation::Warp(PlayerLocationWarp {
+                solarsystem: target_solarsystem,
+                towards: Site::Stargate(origin_solarsystem),
+            }),
+        );
+    } else {
+        panic!("tried to jump from a site without stargate");
+    }
 }
 
 pub fn dock(
     solarsystem: Solarsystem,
-    _site_info: &site::Info,
+    _site: Site,
     site_entities: &mut Vec<SiteEntity>,
     player_locations: &mut HashMap<Player, PlayerLocation>,
     player: Player,
@@ -46,7 +41,7 @@ pub fn dock(
     entities::remove_player(site_entities, player);
     player_locations.insert(
         player,
-        PlayerLocation::Station(Station {
+        PlayerLocation::Station(PlayerLocationStation {
             solarsystem,
             // TODO: dock at correct station
             station: 0,

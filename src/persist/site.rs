@@ -3,11 +3,10 @@ use typings::fixed::facility::Facility;
 use typings::fixed::module::targeted::Targeted;
 use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::shiplayout::ShipLayout;
-use typings::fixed::site::Kind;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::{Solarsystems, Statics};
 use typings::persist::ship::Fitting;
-use typings::persist::site::{Info, SitesNearPlanet};
+use typings::persist::site::{Site, SitesNearPlanet};
 use typings::persist::site_entity::{Npc, SiteEntity};
 
 use super::{read_meh, write};
@@ -15,27 +14,31 @@ use super::{read_meh, write};
 // TODO: mutex on solarsystem for read and write access
 // read needs probably public and private methods to prevent deadlock?
 
-fn filename_site_entities(solarsystem: Solarsystem, site_unique: &str) -> String {
-    format!("persist/site-entities/{}/{}.yaml", solarsystem, site_unique)
+fn filename_site_entities(solarsystem: Solarsystem, site: Site) -> String {
+    format!(
+        "persist/site-entities/{}/{}.yaml",
+        solarsystem,
+        site.to_string()
+    )
 }
 
 fn filename_sites(solarsystem: Solarsystem) -> String {
     format!("persist/sites/{}.yaml", solarsystem)
 }
 
-pub fn read_site_entities(solarsystem: Solarsystem, site_unique: &str) -> Result<Vec<SiteEntity>> {
-    read_meh(&filename_site_entities(solarsystem, site_unique))
+pub fn read_site_entities(solarsystem: Solarsystem, site: Site) -> Result<Vec<SiteEntity>> {
+    read_meh(&filename_site_entities(solarsystem, site))
 }
 
 pub fn read_sites(solarsystem: Solarsystem) -> Result<SitesNearPlanet> {
     read_meh(&filename_sites(solarsystem))
 }
-pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(Solarsystem, Info)> {
+pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(Solarsystem, Site)> {
     let mut result = Vec::new();
     for solarsystem in solarsystems.data.keys().copied() {
         let sites = read_sites(solarsystem).expect("init at least created gate sites");
-        for site in sites.values().flatten() {
-            result.push((solarsystem, site.clone()));
+        for site in sites.all() {
+            result.push((solarsystem, site));
         }
     }
     result
@@ -43,55 +46,33 @@ pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(Solarsystem, I
 
 pub fn write_site_entities(
     solarsystem: Solarsystem,
-    site_unique: &str,
+    site: Site,
     entities: &[SiteEntity],
 ) -> Result<()> {
-    write(&filename_site_entities(solarsystem, site_unique), &entities)
+    write(&filename_site_entities(solarsystem, site), &entities)
 }
 
 fn write_sites(solarsystem: Solarsystem, sites: &SitesNearPlanet) -> Result<()> {
     write(&filename_sites(solarsystem), sites)
 }
 
-pub fn read_site_info(solarsystem: Solarsystem, site_unique: &str) -> Result<Option<Info>> {
-    let sites = read_sites(solarsystem)?;
-    let site = sites
-        .values()
-        .flatten()
-        .find(|o| o.site_unique == site_unique);
-    Ok(site.cloned())
-}
-
 pub fn add(
     solarsystem: Solarsystem,
     planet: u8,
-    site: Info,
+    site: Site,
     entities: &[SiteEntity],
 ) -> Result<()> {
-    write_site_entities(solarsystem, &site.site_unique, entities)?;
+    write_site_entities(solarsystem, site, entities)?;
 
     let mut sites = read_sites(solarsystem)?;
-    sites.entry(planet).or_default().push(site);
+    sites.add(planet, site);
     write_sites(solarsystem, &sites)
 }
 
-pub fn remove(solarsystem: Solarsystem, site_unique: &str) -> Result<()> {
+pub fn remove(solarsystem: Solarsystem, site: Site) -> Result<()> {
     let mut sites = read_sites(solarsystem)?;
-    if let Some((planet, index)) = position_of_site_unique(&sites, site_unique) {
-        let sites = sites.get_mut(&planet).unwrap();
-        sites.remove(index);
-    }
-
+    sites.remove(site);
     write_sites(solarsystem, &sites)
-}
-
-fn position_of_site_unique(sites: &SitesNearPlanet, unique: &str) -> Option<(u8, usize)> {
-    for (planet, site_info) in sites {
-        if let Some(position) = site_info.iter().position(|o| o.site_unique == unique) {
-            return Some((planet.to_owned(), position));
-        }
-    }
-    None
 }
 
 pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
@@ -100,22 +81,18 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
 
         // Purge stations and stargates from overview.
         // If they are gone from the data players shouldnt be able to warp to them anymore
-        for planet in 1..=data.planets {
-            let sites = sites.entry(planet).or_default();
-            *sites = sites
-                .iter()
-                .filter(|o| !matches!(o.kind, Kind::Stargate | Kind::Station))
-                .cloned()
-                .collect();
+        for site in sites.all() {
+            if matches!(site, Site::Stargate(_) | Site::Station(_)) {
+                sites.remove(site);
+            }
         }
 
         // Ensure stargates exist
         for (target, planet) in &data.stargates {
-            let name = target.to_string();
-            let site_unique = format!("stargate{}", target);
+            let site = Site::Stargate(*target);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entities(*solarsystem, &site_unique)
+            let mut entities = read_site_entities(*solarsystem, site)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, SiteEntity::Facility(_) | SiteEntity::Npc(_)))
@@ -125,26 +102,18 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             add_guards(statics, &mut entities);
             // Add stargate
             entities.insert(0, SiteEntity::Facility(Facility::Stargate));
-            write_site_entities(*solarsystem, &site_unique, &entities)?;
+            write_site_entities(*solarsystem, site, &entities)?;
 
-            sites.entry(*planet).or_default().insert(
-                0,
-                Info {
-                    kind: Kind::Stargate,
-                    name: Some(name),
-                    site_unique,
-                },
-            );
+            sites.add(*planet, site);
         }
 
         // Ensure stations exist
         for (index, planet) in data.stations.iter().copied().enumerate() {
-            let number = index + 1;
-            let name = format!("{} {}", solarsystem, number);
-            let site_unique = format!("station{}", number);
+            #[allow(clippy::cast_possible_truncation)]
+            let site = Site::Station(index as u8);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entities(*solarsystem, &site_unique)
+            let mut entities = read_site_entities(*solarsystem, site)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, SiteEntity::Facility(_) | SiteEntity::Npc(_)))
@@ -154,16 +123,9 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             add_guards(statics, &mut entities);
             // Add station
             entities.insert(0, SiteEntity::Facility(Facility::Station));
-            write_site_entities(*solarsystem, &site_unique, &entities)?;
+            write_site_entities(*solarsystem, site, &entities)?;
 
-            sites.entry(planet).or_default().insert(
-                0,
-                Info {
-                    kind: Kind::Station,
-                    name: Some(name),
-                    site_unique,
-                },
-            );
+            sites.add(planet, site);
         }
 
         write_sites(*solarsystem, &sites)?;

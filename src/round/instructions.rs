@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use typings::fixed::npc_faction::NpcFaction;
 use typings::frontrw::site_instruction::{ModuleTargeted, SiteInstruction};
 use typings::persist::player::Player;
-use typings::persist::site;
+use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use super::entities;
@@ -24,12 +24,12 @@ pub fn sort(
     let mut result: Vec<(Actor, SiteInstruction)> = Vec::new();
     for (player, instructions) in player_instructions {
         for instruction in instructions {
-            result.push((Actor::Player(*player), instruction.clone()));
+            result.push((Actor::Player(*player), *instruction));
         }
     }
     for (npc, instructions) in npc_instructions {
         for instruction in instructions {
-            result.push((Actor::Npc(*npc), instruction.clone()));
+            result.push((Actor::Npc(*npc), *instruction));
         }
     }
     result.sort_by(|a, b| a.1.cmp(&b.1));
@@ -38,7 +38,7 @@ pub fn sort(
 
 #[allow(clippy::cast_possible_truncation)]
 pub fn generate_for_npc(
-    _site_info: &site::Info,
+    _site: Site,
     site_entities: &[SiteEntity],
 ) -> Vec<(usize, Vec<SiteInstruction>)> {
     let mut result = Vec::new();
@@ -82,7 +82,7 @@ fn player_sorted_works() {
         Player::Telegram(1),
         vec![
             SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
-                site_unique: "666".to_string(),
+                target: Site::Station(42),
             }),
             SiteInstruction::ModuleUntargeted(
                 typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 },
@@ -122,7 +122,7 @@ fn player_sorted_works() {
         (
             Actor::Player(Player::Telegram(1)),
             SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
-                site_unique: "666".to_string()
+                target: Site::Station(42),
             })
         )
     );

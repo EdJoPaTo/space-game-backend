@@ -48,8 +48,8 @@ pub fn write_station_assets(
 pub fn read_player_location(player: Player) -> PlayerLocation {
     read(&filename_player_location(player))
 }
-pub fn write_player_location(player: Player, location: &PlayerLocation) -> Result<()> {
-    write(&filename_player_location(player), location)
+pub fn write_player_location(player: Player, location: PlayerLocation) -> Result<()> {
+    write(&filename_player_location(player), &location)
 }
 pub fn read_all_player_locations() -> Vec<(Player, PlayerLocation)> {
     let list = list("persist/player-location/");

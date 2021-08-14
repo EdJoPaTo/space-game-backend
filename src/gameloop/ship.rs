@@ -1,5 +1,4 @@
-use typings::fixed::solarsystem::Solarsystem;
-use typings::persist::player_location::{PlayerLocation, Station};
+use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
 
 use crate::persist::player::{
@@ -14,13 +13,7 @@ pub fn all() -> anyhow::Result<()> {
         if !ship.status.is_alive() {
             eprintln!("player is dead {:?} {:?}", player, ship);
             // TODO: use home station
-            write_player_location(
-                player,
-                &PlayerLocation::Station(Station {
-                    solarsystem: Solarsystem::default(),
-                    station: 0,
-                }),
-            )?;
+            write_player_location(player, PlayerLocation::default())?;
             write_player_ship(player, &Ship::default())?;
         }
     }

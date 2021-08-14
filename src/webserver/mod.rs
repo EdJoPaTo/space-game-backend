@@ -78,8 +78,8 @@ async fn player_ship(req: Request<()>) -> tide::Result {
 #[allow(clippy::unused_async)]
 async fn site_entities(req: Request<()>) -> tide::Result {
     let solarsystem = req.param("solarsystem")?.parse()?;
-    let site_unique = req.param("unique")?.to_string();
-    let body = site_entity::read(&Statics::default(), solarsystem, &site_unique);
+    let site = req.param("unique")?.parse()?;
+    let body = site_entity::read(&Statics::default(), solarsystem, site);
     tide_json_response(&body)
 }
 

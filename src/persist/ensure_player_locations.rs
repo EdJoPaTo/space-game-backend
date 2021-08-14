@@ -1,6 +1,6 @@
-use typings::fixed::site::Kind;
 use typings::fixed::Statics;
-use typings::persist::player_location::PlayerLocation;
+use typings::persist::player_location::{PlayerLocation, PlayerLocationWarp};
+use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::write_player_location;
@@ -15,32 +15,32 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
     let all_sites = read_sites_everywhere(&statics.solarsystems);
     let player_locations = read_all_player_locations();
 
-    for (player, location) in &player_locations {
+    for (player, location) in player_locations {
         let location_exists = match location {
             PlayerLocation::Warp(warp) => all_sites
                 .iter()
-                .any(|o| o.0 == warp.solarsystem && o.1.site_unique == warp.towards_site_unique),
+                .any(|o| o.0 == warp.solarsystem && o.1 == warp.towards),
             PlayerLocation::Station(_) => {
                 // TODO: ensure station still exists
                 true
             }
-            PlayerLocation::Site(site) => {
+            PlayerLocation::Site(pls) => {
                 let site = all_sites
                     .iter()
-                    .find(|o| o.0 == site.solarsystem && o.1.site_unique == site.site_unique);
-                if let Some((solarsystem, site_info)) = site {
-                    let mut entities = read_site_entities(*solarsystem, &site_info.site_unique)
+                    .find(|o| o.0 == pls.solarsystem && o.1 == pls.site);
+                if let Some((solarsystem, site)) = site {
+                    let mut entities = read_site_entities(*solarsystem, *site)
                         .expect("site exists so its entities should too");
                     let site_knows = entities
                         .iter()
-                        .any(|o| matches!(o, SiteEntity::Player(p) if p == player));
+                        .any(|o| matches!(o, SiteEntity::Player(p) if p == &player));
                     if !site_knows {
                         eprintln!(
                             "    player expected to be in site but site didnt knew: {:?} {} {:?}",
-                            player, solarsystem, site_info
+                            player, solarsystem, site
                         );
-                        entities.push(SiteEntity::Player(*player));
-                        write_site_entities(*solarsystem, &site_info.site_unique, &entities)?;
+                        entities.push(SiteEntity::Player(player));
+                        write_site_entities(*solarsystem, *site, &entities)?;
                     }
                     true
                 } else {
@@ -56,13 +56,13 @@ pub fn ensure_player_locations(statics: &Statics) -> anyhow::Result<()> {
             );
             let first_safe = all_sites
                 .iter()
-                .find(|o| o.0 == solarsystem && matches!(o.1.kind, Kind::Station | Kind::Stargate))
+                .find(|o| o.0 == solarsystem && matches!(o.1, Site::Station(_) | Site::Stargate(_)))
                 .expect("system shouldve had at least a stargate");
             write_player_location(
-                *player,
-                &PlayerLocation::Warp(typings::persist::player_location::Warp {
+                player,
+                PlayerLocation::Warp(PlayerLocationWarp {
                     solarsystem,
-                    towards_site_unique: first_safe.1.site_unique.to_string(),
+                    towards: first_safe.1,
                 }),
             )?;
         }

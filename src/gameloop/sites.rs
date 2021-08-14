@@ -3,30 +3,21 @@ use typings::fixed::lifeless::Lifeless;
 use typings::fixed::module::targeted::Targeted;
 use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::shiplayout::ShipLayout;
-use typings::fixed::site::Kind;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
 use typings::persist::ship::{Fitting, Status};
-use typings::persist::site::{Info, SitesNearPlanet};
+use typings::persist::site::{Site, SitesNearPlanet};
 use typings::persist::site_entity::{self, Npc, SiteEntity};
 
 use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
 
-fn generate_unique(existing: &mut Vec<String>) -> String {
+fn generate_unique(existing: &mut Vec<u8>) -> u8 {
     let mut rng = rand::thread_rng();
     loop {
-        let rand_string: String = [
-            rng.gen_range('A'..'Z'),
-            rng.gen_range('A'..'Z'),
-            rng.gen_range('0'..'9'),
-            rng.gen_range('0'..'9'),
-            rng.gen_range('0'..'9'),
-        ]
-        .iter()
-        .collect();
-        if !existing.contains(&rand_string) {
-            existing.push(rand_string.to_string());
-            return rand_string;
+        let unique = rng.gen();
+        if !existing.contains(&unique) {
+            existing.push(unique);
+            return unique;
         }
     }
 }
@@ -34,14 +25,9 @@ fn generate_unique(existing: &mut Vec<String>) -> String {
 pub fn all(statics: &Statics) -> anyhow::Result<()> {
     for solarsystem in statics.solarsystems.data.keys().copied() {
         let sites = read_sites(solarsystem).expect("init at least created gate sites");
-        let mut site_uniques = sites
-            .values()
-            .flatten()
-            .map(|o| o.site_unique.to_string())
-            .collect::<Vec<_>>();
 
         // Asteroid Belts
-        generate_asteroid_belts(statics, solarsystem, &mut site_uniques, &sites)?;
+        generate_asteroid_belts(statics, solarsystem, &sites)?;
         spawn_asteroid_belt_pirates(statics, solarsystem, &sites)?;
     }
 
@@ -51,23 +37,24 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 fn generate_asteroid_belts(
     statics: &Statics,
     solarsystem: Solarsystem,
-    site_uniques: &mut Vec<String>,
     sites: &SitesNearPlanet,
 ) -> anyhow::Result<()> {
     let planets = statics.solarsystems.get(&solarsystem).planets;
-    let amount = sites
-        .values()
-        .flatten()
-        .filter(|o| matches!(o.kind, Kind::AsteroidField))
-        .count();
+    let mut existing = sites
+        .all()
+        .iter()
+        .filter_map(|o| {
+            if let Site::AsteroidField(u) = o {
+                Some(*u)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
     let mut rng = rand::thread_rng();
-    for _ in amount..4 {
+    for _ in existing.len()..4 {
         let planet = rng.gen_range(1..=planets);
-        let site = Info {
-            kind: Kind::AsteroidField,
-            site_unique: generate_unique(site_uniques),
-            name: None,
-        };
+        let site = Site::AsteroidField(generate_unique(&mut existing));
         let mut entities = Vec::new();
         for _ in 0..5 {
             entities.push(SiteEntity::Lifeless(site_entity::Lifeless {
@@ -92,9 +79,9 @@ fn spawn_asteroid_belt_pirates(
     sites: &SitesNearPlanet,
 ) -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
-    for site in sites.values().flatten() {
-        if let Kind::AsteroidField = site.kind {
-            let mut entities = read_site_entities(solarsystem, &site.site_unique)?;
+    for site in sites.all() {
+        if let Site::AsteroidField(_) = site {
+            let mut entities = read_site_entities(solarsystem, site)?;
 
             let npc_amount = entities
                 .iter()
@@ -114,7 +101,7 @@ fn spawn_asteroid_belt_pirates(
                     fitting,
                     status,
                 }));
-                write_site_entities(solarsystem, &site.site_unique, &entities)?;
+                write_site_entities(solarsystem, site, &entities)?;
             }
         }
     }
