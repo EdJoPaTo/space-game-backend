@@ -22,7 +22,11 @@ fn read_meh<P: AsRef<Path>, T>(file: P) -> anyhow::Result<T>
 where
     T: serde::de::DeserializeOwned,
 {
-    let value = serde_yaml::from_str(&fs::read_to_string(file)?)?;
+    let file = file.as_ref();
+    let content = fs::read_to_string(file)
+        .map_err(|err| anyhow::anyhow!("failed to read {:?} {}", file, err))?;
+    let value = serde_yaml::from_str(&content)
+        .map_err(|err| anyhow::anyhow!("failed to deserialize {:?} {}", file, err))?;
     Ok(value)
 }
 
@@ -33,7 +37,11 @@ where
     if value == &T::default() {
         delete(file)?;
     } else {
-        write_str(file.as_ref(), &serde_yaml::to_string(value)?)?;
+        let file = file.as_ref();
+        let content = serde_yaml::to_string(value)
+            .map_err(|err| anyhow::anyhow!("failed to serialize {:?} {}", file, err))?;
+        write_str(file, &content)
+            .map_err(|err| anyhow::anyhow!("failed to write {:?} {}", file, err))?;
     }
     Ok(())
 }
