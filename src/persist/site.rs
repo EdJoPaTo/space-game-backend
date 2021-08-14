@@ -8,7 +8,7 @@ use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::{Solarsystems, Statics};
 use typings::persist::ship::Fitting;
 use typings::persist::site::{Info, SitesNearPlanet};
-use typings::persist::site_entity::{self, Npc, SiteEntity};
+use typings::persist::site_entity::{Npc, SiteEntity};
 
 use super::{read_meh, write};
 
@@ -124,12 +124,7 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             // Add guards
             add_guards(statics, &mut entities);
             // Add stargate
-            entities.insert(
-                0,
-                SiteEntity::Facility(site_entity::Facility {
-                    id: Facility::Stargate,
-                }),
-            );
+            entities.insert(0, SiteEntity::Facility(Facility::Stargate));
             write_site_entities(*solarsystem, &site_unique, &entities)?;
 
             sites.entry(*planet).or_default().insert(
@@ -158,12 +153,7 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             // Add guards
             add_guards(statics, &mut entities);
             // Add station
-            entities.insert(
-                0,
-                SiteEntity::Facility(site_entity::Facility {
-                    id: Facility::Station,
-                }),
-            );
+            entities.insert(0, SiteEntity::Facility(Facility::Station));
             write_site_entities(*solarsystem, &site_unique, &entities)?;
 
             sites.entry(planet).or_default().insert(
