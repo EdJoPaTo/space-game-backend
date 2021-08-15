@@ -1,6 +1,6 @@
 use anyhow::Result;
 use typings::fixed::solarsystem::Solarsystem;
-use typings::frontrw::site_instruction::SiteInstruction;
+use typings::frontrw::site_instruction::{self, SiteInstruction};
 use typings::persist::player::Player;
 use typings::persist::player_assets::PlayerStationAssets;
 use typings::persist::player_location::PlayerLocation;
@@ -74,11 +74,23 @@ pub fn write_player_ship(player: Player, ship: &Ship) -> Result<()> {
 }
 
 pub fn read_player_site_instructions(player: Player) -> Vec<SiteInstruction> {
-    read(&filename_instructions(player))
+    let all: Vec<SiteInstruction> = read(&filename_instructions(player));
+    site_instruction::filter_possible(&all)
 }
 pub fn write_player_site_instructions(
     player: Player,
     instructions: &[SiteInstruction],
 ) -> Result<()> {
-    write(&filename_instructions(player), &instructions)
+    let possible = site_instruction::filter_possible(instructions);
+    write(&filename_instructions(player), &possible)
+}
+pub fn add_player_site_instructions(
+    player: Player,
+    instructions: &[SiteInstruction],
+) -> Result<()> {
+    let mut all = read_player_site_instructions(player);
+    for additional in instructions {
+        all.push(*additional);
+    }
+    write_player_site_instructions(player, &all)
 }

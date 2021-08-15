@@ -6,7 +6,8 @@ use typings::frontrw::site_instruction::SiteInstruction;
 use typings::frontrw::station_instruction::StationInstruction;
 
 use crate::persist::player::{
-    read_player_location, read_player_ship, read_station_assets, write_player_site_instructions,
+    add_player_site_instructions, read_player_location, read_player_ship,
+    read_player_site_instructions, read_station_assets,
 };
 use crate::persist::site::read_sites;
 use crate::station;
@@ -41,6 +42,7 @@ pub fn init() -> tide::Server<()> {
     app.at("/player/:player/station-assets/:solarsystem/:station")
         .get(station_assets);
     app.at("/player/:player/site-instructions")
+        .get(get_site_instructions)
         .post(post_site_instructions);
     app.at("/player/:player/station-instructions")
         .post(post_station_instructions);
@@ -101,6 +103,13 @@ async fn station_assets(req: Request<()>) -> tide::Result {
 }
 
 #[allow(clippy::unused_async)]
+async fn get_site_instructions(req: Request<()>) -> tide::Result {
+    let player = req.param("player")?.parse()?;
+    let body = read_player_site_instructions(player);
+    tide_json_response(&body)
+}
+
+#[allow(clippy::unused_async)]
 async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let instructions = req.body_json::<Vec<SiteInstruction>>().await?;
@@ -110,7 +119,7 @@ async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
         instructions.len(),
         instructions
     );
-    write_player_site_instructions(player, &instructions)?;
+    add_player_site_instructions(player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
 }
 
