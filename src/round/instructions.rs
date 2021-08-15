@@ -1,14 +1,7 @@
 use std::collections::HashMap;
 
-use typings::fixed::npc_faction::NpcFaction;
-use typings::frontrw::site_instruction::{ModuleTargeted, SiteInstruction};
+use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player::Player;
-use typings::persist::site::Site;
-use typings::persist::site_entity::SiteEntity;
-
-use super::entities;
-
-// TODO: allow for npc instructions to be added and sorted into the same ordered Vec<>
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Actor {
@@ -36,38 +29,6 @@ pub fn sort(
     result
 }
 
-#[allow(clippy::cast_possible_truncation)]
-pub fn generate_for_npc(
-    _site: Site,
-    site_entities: &[SiteEntity],
-) -> Vec<(usize, Vec<SiteInstruction>)> {
-    let mut result = Vec::new();
-    for (site_index, entity) in site_entities.iter().enumerate() {
-        if let SiteEntity::Npc(npc) = entity {
-            match npc.faction {
-                NpcFaction::Guards => {
-                    // TODO: attack bad players
-                }
-                NpcFaction::Pirates => {
-                    let mut instructions = Vec::new();
-                    if let Some((target_index, _target_player)) =
-                        entities::get_players(site_entities).first()
-                    {
-                        for module_index in 0..npc.fitting.slots_targeted.len() {
-                            instructions.push(SiteInstruction::ModuleTargeted(ModuleTargeted {
-                                target_index_in_site: *target_index as u8,
-                                module_index: module_index as u8,
-                            }));
-                        }
-                    }
-                    result.push((site_index, instructions));
-                }
-            }
-        }
-    }
-    result
-}
-
 pub fn cleanup(player_instructions: &mut HashMap<Player, Vec<SiteInstruction>>) {
     // TODO: keep something like warp
     for (_player, instructions) in player_instructions.iter_mut() {
@@ -82,7 +43,7 @@ fn player_sorted_works() {
         Player::Telegram(1),
         vec![
             SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
-                target: Site::Station(42),
+                target: typings::persist::site::Site::Station(42),
             }),
             SiteInstruction::ModuleUntargeted(
                 typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 },
@@ -91,10 +52,12 @@ fn player_sorted_works() {
     );
     example.insert(
         Player::Telegram(2),
-        vec![SiteInstruction::ModuleTargeted(ModuleTargeted {
-            module_index: 0,
-            target_index_in_site: 0,
-        })],
+        vec![SiteInstruction::ModuleTargeted(
+            typings::frontrw::site_instruction::ModuleTargeted {
+                module_index: 0,
+                target_index_in_site: 0,
+            },
+        )],
     );
     let sorted = sort(&example, &[]);
     assert_eq!(sorted.len(), 3);
@@ -111,7 +74,7 @@ fn player_sorted_works() {
         sorted[1],
         (
             Actor::Player(Player::Telegram(2)),
-            SiteInstruction::ModuleTargeted(ModuleTargeted {
+            SiteInstruction::ModuleTargeted(typings::frontrw::site_instruction::ModuleTargeted {
                 module_index: 0,
                 target_index_in_site: 0,
             })
@@ -122,7 +85,7 @@ fn player_sorted_works() {
         (
             Actor::Player(Player::Telegram(1)),
             SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
-                target: Site::Station(42),
+                target: typings::persist::site::Site::Station(42),
             })
         )
     );

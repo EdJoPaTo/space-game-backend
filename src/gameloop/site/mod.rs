@@ -15,6 +15,8 @@ use crate::persist::player::{
 use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
 use crate::round::advance;
 
+mod npc_instructions;
+
 pub fn all(statics: &Statics) -> anyhow::Result<()> {
     let mut some_error = false;
 
@@ -72,7 +74,7 @@ fn handle(
             .collect::<Vec<_>>()
     };
 
-    let mut instructions = {
+    let mut player_instructions = {
         let mut result = HashMap::new();
         for player in players_in_site {
             let instructions = read_player_site_instructions(player);
@@ -80,6 +82,8 @@ fn handle(
         }
         result
     };
+
+    let npc_instructions = npc_instructions::generate(site, &site_entities);
 
     let mut player_ships = HashMap::new();
     let mut player_locations = HashMap::new();
@@ -96,7 +100,8 @@ fn handle(
         solarsystem,
         site,
         &mut site_entities,
-        &mut instructions,
+        &mut player_instructions,
+        &npc_instructions,
         &mut player_locations,
         &mut player_ships,
         players_warping_in,
@@ -110,7 +115,7 @@ fn handle(
         some_error = true;
         eprintln!("{} write_site_entities {}", error_prefix, err);
     }
-    for (player, instructions) in instructions {
+    for (player, instructions) in player_instructions {
         if let Err(err) = write_player_site_instructions(player, &instructions) {
             some_error = true;
             eprintln!(

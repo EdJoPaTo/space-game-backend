@@ -29,16 +29,14 @@ pub fn advance(
     site: Site,
     site_entities: &mut Vec<SiteEntity>,
     player_instructions: &mut HashMap<Player, Vec<SiteInstruction>>,
+    npc_instructions: &[(usize, Vec<SiteInstruction>)],
     player_locations: &mut HashMap<Player, PlayerLocation>,
     player_ships: &mut HashMap<Player, Ship>,
     players_warping_in: &[Player],
 ) -> Outputs {
     // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
 
-    let sorted_instructions = instructions::sort(
-        player_instructions,
-        &instructions::generate_for_npc(site, site_entities),
-    );
+    let sorted_instructions = instructions::sort(player_instructions, npc_instructions);
     if !sorted_instructions.is_empty() {
         println!(
             "site::handle {:>15} {:?} {:?}",
