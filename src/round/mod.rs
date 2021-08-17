@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use typings::fixed::facility::Service;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
+use typings::frontread::site_log::{SiteLog, SiteLogActor};
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::persist::player::Player;
 use typings::persist::player_location::PlayerLocation;
@@ -20,7 +21,9 @@ mod instructions;
 mod module;
 mod warp_player;
 
-pub struct Outputs {}
+pub struct Outputs {
+    pub site_log: Vec<SiteLog>,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn advance(
@@ -44,6 +47,8 @@ pub fn advance(
         );
     }
 
+    let mut site_log = Vec::new();
+
     for (actor, instruction) in &sorted_instructions {
         match instruction {
             SiteInstruction::ModuleUntargeted(module) => {
@@ -63,25 +68,29 @@ pub fn advance(
                     actor,
                     module.module_index,
                     module.target_index_in_site,
+                    &mut site_log,
                 );
             }
             SiteInstruction::Facility(facility) => {
                 if let Actor::Player(player) = *actor {
-                    // TODO: ensure still alive
                     match facility.service {
                         Service::Dock => facility::dock(
                             solarsystem,
                             site,
                             site_entities,
                             player_locations,
+                            player_ships,
                             player,
+                            &mut site_log,
                         ),
                         Service::Jump => facility::jump(
                             solarsystem,
                             site,
                             site_entities,
                             player_locations,
+                            player_ships,
                             player,
+                            &mut site_log,
                         ),
                     }
                 } else {
@@ -90,13 +99,14 @@ pub fn advance(
             }
             SiteInstruction::Warp(warp) => {
                 if let Actor::Player(player) = *actor {
-                    // TODO: ensure still alive
                     warp_player::out(
                         solarsystem,
                         site_entities,
                         player_locations,
+                        player_ships,
                         player,
                         warp.target,
+                        &mut site_log,
                     );
                 } else {
                     panic!("only players can warp");
@@ -105,7 +115,7 @@ pub fn advance(
         }
     }
 
-    *site_entities = finishup_entities(statics, site_entities, player_ships);
+    finishup_entities(statics, site_entities, player_ships, &mut site_log);
 
     // Add players in warp to here
     warp_player::in_site(
@@ -118,7 +128,7 @@ pub fn advance(
 
     instructions::cleanup(player_instructions);
 
-    Outputs {}
+    Outputs { site_log }
 }
 
 /// - apply passive effects
@@ -126,11 +136,12 @@ pub fn advance(
 /// - cleanup dead
 fn finishup_entities(
     statics: &Statics,
-    before: &[SiteEntity],
+    site_entities: &mut Vec<SiteEntity>,
     player_ships: &mut HashMap<Player, Ship>,
-) -> Vec<SiteEntity> {
+    site_log: &mut Vec<SiteLog>,
+) {
     let mut remaining = Vec::new();
-    for entity in before {
+    for entity in site_entities.iter() {
         match entity {
             SiteEntity::Facility(_) => {
                 remaining.push(entity.clone());
@@ -138,6 +149,10 @@ fn finishup_entities(
             SiteEntity::Lifeless(l) => {
                 if l.status.is_alive() {
                     remaining.push(entity.clone());
+                } else {
+                    site_log.push(SiteLog::RapidUnscheduledDisassembly(
+                        SiteLogActor::Lifeless(l.id),
+                    ));
                 }
             }
             SiteEntity::Npc(npc) => {
@@ -152,6 +167,11 @@ fn finishup_entities(
                         fitting: npc.fitting.clone(),
                         status,
                     }));
+                } else {
+                    site_log.push(SiteLog::RapidUnscheduledDisassembly(SiteLogActor::Npc((
+                        npc.faction,
+                        npc.fitting.layout,
+                    ))));
                 }
             }
             SiteEntity::Player(player) => {
@@ -164,10 +184,16 @@ fn finishup_entities(
                 ship.status = ship.status.min_layout(statics, &ship.fitting);
                 if ship.status.is_alive() {
                     remaining.push(entity.clone());
+                } else {
+                    site_log.push(SiteLog::RapidUnscheduledDisassembly(SiteLogActor::Player(
+                        (*player, ship.fitting.layout),
+                    )));
+
+                    // The calling function has to check if players are dead and handle that.
+                    // The round logic doesnt care about that anymore.
                 }
-                // When dead another job will clean that up. The round itself doesnt care anymore about the player.
             }
         }
     }
-    remaining
+    *site_entities = remaining;
 }

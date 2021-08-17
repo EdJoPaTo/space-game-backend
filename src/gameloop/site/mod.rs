@@ -8,7 +8,7 @@ use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::{
-    read_all_player_locations, read_player_location, read_player_ship,
+    add_player_site_log, read_all_player_locations, read_player_location, read_player_ship,
     read_player_site_instructions, write_player_location, write_player_ship,
     write_player_site_instructions,
 };
@@ -49,6 +49,7 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn handle(
     statics: &Statics,
     solarsystem: Solarsystem,
@@ -88,14 +89,14 @@ fn handle(
     let mut player_ships = HashMap::new();
     let mut player_locations = HashMap::new();
 
-    for player in all_players_involved {
+    for player in all_players_involved.iter().copied() {
         let ship = read_player_ship(player);
         player_ships.insert(player, ship);
         let location = read_player_location(player);
         player_locations.insert(player, location);
     }
 
-    let _outputs = advance(
+    let outputs = advance(
         statics,
         solarsystem,
         site,
@@ -106,6 +107,16 @@ fn handle(
         &mut player_ships,
         players_warping_in,
     );
+
+    if !outputs.site_log.is_empty() {
+        println!(
+            "site_log {:>15} {:?} {} {:?}",
+            solarsystem.to_string(),
+            site,
+            outputs.site_log.len(),
+            outputs.site_log,
+        );
+    }
 
     // Nothing after this point is allowed to fail the rest -> Data has to be saved
     let mut some_error = false;
@@ -137,6 +148,12 @@ fn handle(
                 "{} write_player_location {:?} {}",
                 error_prefix, player, err
             );
+        }
+    }
+    for player in all_players_involved {
+        if let Err(err) = add_player_site_log(player, &outputs.site_log) {
+            some_error = true;
+            eprintln!("{} add_player_sitelog {:?} {}", error_prefix, player, err);
         }
     }
 

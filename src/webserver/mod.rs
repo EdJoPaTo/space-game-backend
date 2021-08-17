@@ -6,7 +6,7 @@ use typings::frontrw::site_instruction::SiteInstruction;
 use typings::frontrw::station_instruction::StationInstruction;
 
 use crate::persist::player::{
-    add_player_site_instructions, read_player_location, read_player_ship,
+    add_player_site_instructions, pop_player_site_log, read_player_location, read_player_ship,
     read_player_site_instructions, read_station_assets,
 };
 use crate::persist::site::read_sites;
@@ -44,6 +44,7 @@ pub fn init() -> tide::Server<()> {
     app.at("/player/:player/site-instructions")
         .get(get_site_instructions)
         .post(post_site_instructions);
+    app.at("/player/:player/site-log").get(get_player_site_log);
     app.at("/player/:player/station-instructions")
         .post(post_station_instructions);
 
@@ -121,6 +122,13 @@ async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
     );
     add_player_site_instructions(player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
+}
+
+#[allow(clippy::unused_async)]
+async fn get_player_site_log(req: Request<()>) -> tide::Result {
+    let player = req.param("player")?.parse()?;
+    let body = pop_player_site_log(player)?;
+    tide_json_response(&body)
 }
 
 #[allow(clippy::unused_async)]

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
+use typings::fixed::module::targeted::Targeted;
 use typings::fixed::{module, Statics};
+use typings::frontread::site_log::{SiteLog, SiteLogActor};
 use typings::persist::player::Player;
 use typings::persist::ship::{Fitting, Ship, Status};
 use typings::persist::site_entity::SiteEntity;
@@ -51,25 +53,34 @@ pub fn apply_targeted(
     actor: &Actor,
     module_index: u8,
     target_index_in_site: u8,
+    site_log: &mut Vec<SiteLog>,
 ) {
-    let m = {
-        let (fitting, status) = match actor {
-            Actor::Player(player) => {
-                let ship = player_ships
-                    .get_mut(player)
-                    .expect("player_ships has to contain player with instructions");
-                (&ship.fitting, &mut ship.status)
-            }
-            Actor::Npc(npc_index) => {
-                let npc = entities::get_mut_npc(site_entities, *npc_index);
-                (&npc.fitting, &mut npc.status)
-            }
-        };
-        apply_targeted_to_origin(statics, fitting, status, module_index)
+    let (site_log_origin, fitting, status) = match actor {
+        Actor::Player(player) => {
+            let ship = player_ships
+                .get_mut(player)
+                .expect("player_ships has to contain player with instructions");
+            let log_actor = SiteLogActor::Player((*player, ship.fitting.layout));
+            (log_actor, &ship.fitting, &mut ship.status)
+        }
+        Actor::Npc(npc_index) => {
+            let npc = entities::get_mut_npc(site_entities, *npc_index);
+            let log_actor = SiteLogActor::Npc((npc.faction, npc.fitting.layout));
+            (log_actor, &npc.fitting, &mut npc.status)
+        }
     };
-    if let Some(m) = m {
+    if let Some((targeted, details)) =
+        apply_targeted_to_origin(statics, fitting, status, module_index)
+    {
         if let Some(target) = site_entities.get_mut(target_index_in_site as usize) {
-            apply_targeted_to_target(player_ships, target, m);
+            apply_targeted_to_target(player_ships, target, details);
+
+            let site_log_target = SiteLogActor::from(player_ships, target);
+            site_log.push(SiteLog::ModuleTargeted((
+                site_log_origin,
+                targeted,
+                site_log_target,
+            )));
         }
     }
 }
@@ -80,15 +91,12 @@ fn apply_targeted_to_origin<'s>(
     origin_fitting: &Fitting,
     origin_status: &mut Status,
     module_index: u8,
-) -> Option<&'s module::targeted::Details> {
-    if let Some(module) = origin_fitting
-        .slots_targeted
-        .get(module_index as usize)
-        .map(|o| statics.modules_targeted.get(o))
-    {
-        if let Some(origin_new_status) = apply_to_origin(*origin_status, &module.effects_origin) {
+) -> Option<(Targeted, &'s module::targeted::Details)> {
+    if let Some(targeted) = origin_fitting.slots_targeted.get(module_index as usize) {
+        let details = statics.modules_targeted.get(targeted);
+        if let Some(origin_new_status) = apply_to_origin(*origin_status, &details.effects_origin) {
             *origin_status = origin_new_status;
-            return Some(module);
+            return Some((*targeted, details));
         }
     } else {
         println!(

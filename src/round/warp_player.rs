@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use typings::fixed::solarsystem::Solarsystem;
+use typings::frontread::site_log::{SiteLog, SiteLogActor};
 use typings::persist::player::Player;
 use typings::persist::player_location::{PlayerLocation, PlayerLocationSite, PlayerLocationWarp};
+use typings::persist::ship::Ship;
 use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
@@ -12,17 +14,28 @@ pub fn out(
     solarsystem: Solarsystem,
     site_entities: &mut Vec<SiteEntity>,
     player_locations: &mut HashMap<Player, PlayerLocation>,
+    player_ships: &mut HashMap<Player, Ship>,
     player: Player,
     towards: Site,
+    site_log: &mut Vec<SiteLog>,
 ) {
-    entities::remove_player(site_entities, player);
-    player_locations.insert(
-        player,
-        PlayerLocation::Warp(PlayerLocationWarp {
-            solarsystem,
-            towards,
-        }),
-    );
+    let ship = player_ships
+        .get(&player)
+        .expect("player has to be in player_ships");
+    if ship.status.is_alive() {
+        entities::remove_player(site_entities, player);
+        player_locations.insert(
+            player,
+            PlayerLocation::Warp(PlayerLocationWarp {
+                solarsystem,
+                towards,
+            }),
+        );
+        site_log.push(SiteLog::WarpIn(SiteLogActor::Player((
+            player,
+            ship.fitting.layout,
+        ))));
+    }
 }
 
 /// Add players in warp to the site to the site
