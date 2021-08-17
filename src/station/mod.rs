@@ -24,7 +24,7 @@ pub fn do_instructions(
             return Err(anyhow::anyhow!("player is not docked"))
         }
     };
-    for instruction in instructions {
+    for instruction in instructions.iter().copied() {
         do_instruction(statics, player, instruction, solarsystem, station)?;
     }
     Ok(())
@@ -33,7 +33,7 @@ pub fn do_instructions(
 fn do_instruction(
     statics: &Statics,
     player: Player,
-    instruction: &StationInstruction,
+    instruction: StationInstruction,
     solarsystem: Solarsystem,
     station: u8,
 ) -> anyhow::Result<()> {
