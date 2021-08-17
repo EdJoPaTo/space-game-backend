@@ -34,8 +34,6 @@ pub fn advance(
     player_ships: &mut HashMap<Player, Ship>,
     players_warping_in: &[Player],
 ) -> Outputs {
-    // TODO: some instructions are standalone. Warp and nothing else for example. Idea: dont allow warp when some effect is there
-
     let sorted_instructions = instructions::sort(player_instructions, npc_instructions);
     if !sorted_instructions.is_empty() {
         println!(

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use typings::frontrw::site_instruction::SiteInstruction;
+use typings::frontrw::site_instruction::{self, SiteInstruction};
 use typings::persist::player::Player;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub fn sort(
 ) -> Vec<(Actor, SiteInstruction)> {
     let mut result: Vec<(Actor, SiteInstruction)> = Vec::new();
     for (player, instructions) in player_instructions {
-        for instruction in instructions {
-            result.push((Actor::Player(*player), *instruction));
+        for instruction in site_instruction::filter_possible(instructions) {
+            result.push((Actor::Player(*player), instruction));
         }
     }
     for (npc, instructions) in npc_instructions {
