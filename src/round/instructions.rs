@@ -41,30 +41,30 @@ fn player_sorted_works() {
     let mut example = HashMap::new();
     example.insert(
         Player::Telegram(1),
-        vec![
-            SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
+        vec![SiteInstruction::Warp(
+            typings::frontrw::site_instruction::Warp {
                 target: typings::persist::site::Site::Station(42),
+            },
+        )],
+    );
+    example.insert(
+        Player::Telegram(2),
+        vec![
+            SiteInstruction::ModuleTargeted(typings::frontrw::site_instruction::ModuleTargeted {
+                module_index: 0,
+                target_index_in_site: 0,
             }),
             SiteInstruction::ModuleUntargeted(
                 typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 },
             ),
         ],
     );
-    example.insert(
-        Player::Telegram(2),
-        vec![SiteInstruction::ModuleTargeted(
-            typings::frontrw::site_instruction::ModuleTargeted {
-                module_index: 0,
-                target_index_in_site: 0,
-            },
-        )],
-    );
     let sorted = sort(&example, &[]);
     assert_eq!(sorted.len(), 3);
     assert_eq!(
         sorted[0],
         (
-            Actor::Player(Player::Telegram(1)),
+            Actor::Player(Player::Telegram(2)),
             SiteInstruction::ModuleUntargeted(
                 typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 }
             )
