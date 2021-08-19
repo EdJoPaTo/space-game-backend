@@ -31,7 +31,7 @@ pub fn out(
                 towards,
             }),
         );
-        site_log.push(SiteLog::WarpIn(SiteLogActor::Player((
+        site_log.push(SiteLog::WarpOut(SiteLogActor::Player((
             player,
             ship.fitting.layout,
         ))));
@@ -44,13 +44,23 @@ pub fn in_site(
     site: Site,
     site_entities: &mut Vec<SiteEntity>,
     player_locations: &mut HashMap<Player, PlayerLocation>,
+    player_ships: &mut HashMap<Player, Ship>,
     players_warping_in: &[Player],
+    site_log: &mut Vec<SiteLog>,
 ) {
     for player in players_warping_in.iter().copied() {
+        let ship = player_ships
+            .get(&player)
+            .expect("player warping in has to be in player_ships");
+
         site_entities.push(SiteEntity::Player(player));
         player_locations.insert(
             player,
             PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
         );
+        site_log.push(SiteLog::WarpIn(SiteLogActor::Player((
+            player,
+            ship.fitting.layout,
+        ))));
     }
 }

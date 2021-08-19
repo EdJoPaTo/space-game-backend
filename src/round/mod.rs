@@ -123,7 +123,9 @@ pub fn advance(
         site,
         site_entities,
         player_locations,
+        player_ships,
         players_warping_in,
+        &mut site_log,
     );
 
     instructions::cleanup(player_instructions);
