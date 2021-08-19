@@ -71,6 +71,9 @@ pub fn advance(
                     &mut site_log,
                 );
             }
+            SiteInstruction::SelfDestruct => {
+                module::self_destruct(site_entities, player_ships, actor);
+            }
             SiteInstruction::Facility(facility) => {
                 if let Actor::Player(player) = *actor {
                     match facility.service {

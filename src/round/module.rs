@@ -128,3 +128,23 @@ fn apply_targeted_to_target(
         }
     }
 }
+
+pub fn self_destruct(
+    site_entities: &mut Vec<SiteEntity>,
+    player_ships: &mut HashMap<Player, Ship>,
+    actor: &Actor,
+) {
+    match actor {
+        Actor::Player(player) => {
+            let ship = player_ships
+                .get_mut(player)
+                .expect("player in site has to be in player_ships");
+            ship.status = Status::DEAD;
+        }
+        Actor::Npc(npc_index) => {
+            let npc = entities::get_mut_npc(site_entities, *npc_index);
+            npc.status = Status::DEAD;
+        }
+    }
+    // No need to add this to the site log. It logs the dead ship anyway.
+}
