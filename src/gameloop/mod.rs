@@ -18,7 +18,7 @@ pub fn start(statics: &Statics) -> anyhow::Result<()> {
 async fn do_loop() -> ! {
     let statics = Statics::default();
     loop {
-        sleep(Duration::from_secs(4)).await;
+        sleep(Duration::from_secs(15)).await;
         if let Err(err) = once(&statics) {
             eprintln!("ERROR gameloop {}", err);
         }
