@@ -117,3 +117,11 @@ pub fn pop_player_site_log(player: Player) -> Result<Vec<SiteLog>> {
     delete(&filename_site_log(player))?;
     Ok(log)
 }
+pub fn list_players_with_site_log() -> Vec<Player> {
+    list("persist/player-sitelog/")
+        .iter()
+        .filter_map(|o| o.file_stem())
+        .filter_map(std::ffi::OsStr::to_str)
+        .filter_map(|o| o.parse().ok())
+        .collect()
+}

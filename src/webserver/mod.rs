@@ -4,10 +4,11 @@ use tide::{Request, Response, StatusCode};
 use typings::fixed::Statics;
 use typings::frontrw::site_instruction::SiteInstruction;
 use typings::frontrw::station_instruction::StationInstruction;
+use typings::persist::player::Player;
 
 use crate::persist::player::{
-    add_player_site_instructions, pop_player_site_log, read_player_location, read_player_ship,
-    read_player_site_instructions, read_station_assets,
+    add_player_site_instructions, list_players_with_site_log, pop_player_site_log,
+    read_player_location, read_player_ship, read_player_site_instructions, read_station_assets,
 };
 use crate::persist::site::read_sites;
 use crate::station;
@@ -47,6 +48,9 @@ pub fn init() -> tide::Server<()> {
     app.at("/player/:player/site-log").get(get_player_site_log);
     app.at("/player/:player/station-instructions")
         .post(post_station_instructions);
+
+    app.at("/platform/:platform/site-log-players")
+        .get(get_platform_site_log_players);
 
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
@@ -128,6 +132,25 @@ async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
 async fn get_player_site_log(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let body = pop_player_site_log(player)?;
+    tide_json_response(&body)
+}
+
+#[allow(clippy::unused_async)]
+async fn get_platform_site_log_players(req: Request<()>) -> tide::Result {
+    let platform = req.param("platform")?;
+    let site_log_players = list_players_with_site_log();
+    let body = match platform {
+        "telegram" => site_log_players
+            .iter()
+            .filter(|o| matches!(o, Player::Telegram(_))),
+        _ => {
+            return Err(tide::Error::from_str(
+                StatusCode::BadRequest,
+                "platform unknown",
+            ));
+        }
+    }
+    .collect::<Vec<_>>();
     tide_json_response(&body)
 }
 
