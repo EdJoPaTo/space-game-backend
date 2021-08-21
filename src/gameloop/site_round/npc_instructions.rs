@@ -17,7 +17,7 @@ pub fn generate(_site: Site, site_entities: &[SiteEntity]) -> Vec<(usize, Vec<Si
                     let mut instructions = Vec::new();
                     if let Some((target_index, _target_player)) = get_players(site_entities).first()
                     {
-                        for module_index in 0..npc.fitting.slots_targeted.len() {
+                        for module_index in 0..npc.ship.fitting.slots_targeted.len() {
                             instructions.push(SiteInstruction::ModuleTargeted(ModuleTargeted {
                                 target_index_in_site: *target_index as u8,
                                 module_index: module_index as u8,

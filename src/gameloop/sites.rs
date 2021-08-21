@@ -5,7 +5,7 @@ use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::shiplayout::ShipLayout;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
-use typings::persist::ship::{Cargo, Fitting};
+use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site::{Site, SitesNearPlanet};
 use typings::persist::site_entity::{self, Npc, SiteEntity};
 
@@ -90,12 +90,9 @@ fn spawn_asteroid_belt_pirates(
                     slots_untargeted: vec![],
                     slots_passive: vec![],
                 };
-                let status = fitting.maximum_status(statics);
                 entities.push(SiteEntity::Npc(Npc {
                     faction: NpcFaction::Pirates,
-                    fitting,
-                    status,
-                    cargo: Cargo::default(),
+                    ship: Ship::new(statics, fitting),
                 }));
                 write_site_entities(solarsystem, site, &entities)?;
             }

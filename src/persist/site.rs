@@ -5,7 +5,7 @@ use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::shiplayout::ShipLayout;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::{Solarsystems, Statics};
-use typings::persist::ship::{Cargo, Fitting};
+use typings::persist::ship::{Fitting, Ship};
 use typings::persist::site::{Site, SitesNearPlanet};
 use typings::persist::site_entity::{Npc, SiteEntity};
 
@@ -161,9 +161,7 @@ fn add_guards(statics: &Statics, entities: &mut Vec<SiteEntity>) {
             0,
             SiteEntity::Npc(Npc {
                 faction: NpcFaction::Guards,
-                fitting: fitting.clone(),
-                status: fitting.maximum_status(statics),
-                cargo: Cargo::default(),
+                ship: Ship::new(statics, fitting),
             }),
         );
     }

@@ -163,22 +163,23 @@ fn finishup_entities(
                 }
             }
             SiteEntity::Npc(npc) => {
-                let layout = statics.ship_layouts.get(&npc.fitting.layout);
-                let mut status = npc.status;
+                let layout = statics.ship_layouts.get(&npc.ship.fitting.layout);
+                let mut status = npc.ship.status;
                 status = apply_passives(status, &layout.round_effects);
                 // Ensure the ship is within its layout limits
-                let status = status.min_layout(statics, &npc.fitting);
+                status = status.min_layout(statics, &npc.ship.fitting);
                 if status.is_alive() {
                     remaining.push(SiteEntity::Npc(Npc {
                         faction: npc.faction,
-                        fitting: npc.fitting.clone(),
-                        status,
-                        cargo: npc.cargo.clone(),
+                        ship: Ship {
+                            status,
+                            ..npc.ship.clone()
+                        },
                     }));
                 } else {
                     site_log.push(SiteLog::RapidUnscheduledDisassembly(SiteLogActor::Npc((
                         npc.faction,
-                        npc.fitting.layout,
+                        npc.ship.fitting.layout,
                     ))));
                 }
             }

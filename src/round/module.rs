@@ -19,30 +19,28 @@ pub fn apply_untargeted(
     actor: &Actor,
     module_index: u8,
 ) {
-    let (fitting, status) = match actor {
-        Actor::Player(player) => {
-            let ship = player_ships
-                .get_mut(player)
-                .expect("player_ships has to contain player with instructions");
-            (&ship.fitting, &mut ship.status)
-        }
+    let ship = match actor {
+        Actor::Player(player) => player_ships
+            .get_mut(player)
+            .expect("player_ships has to contain player with instructions"),
         Actor::Npc(npc_index) => {
             let npc = entities::get_mut_npc(site_entities, *npc_index);
-            (&npc.fitting, &mut npc.status)
+            &mut npc.ship
         }
     };
-    if let Some(module) = fitting
+    if let Some(module) = ship
+        .fitting
         .slots_untargeted
         .get(module_index as usize)
         .map(|o| statics.modules_untargeted.get(o))
     {
-        if let Some(my_new_status) = apply_to_origin(*status, &module.effects) {
-            *status = my_new_status;
+        if let Some(my_new_status) = apply_to_origin(ship.status, &module.effects) {
+            ship.status = my_new_status;
         }
     } else {
         println!(
-            "WARN: untargeted module not handled {} {:?} {:?}",
-            module_index, fitting, status
+            "WARN: untargeted module not handled {} {:?}",
+            module_index, ship
         );
     }
 }
@@ -56,27 +54,26 @@ pub fn apply_targeted(
     target_index_in_site: u8,
     site_log: &mut Vec<SiteLog>,
 ) {
-    let (site_log_origin, fitting, status, free_cargo) = match actor {
+    let (site_log_origin, ship) = match actor {
         Actor::Player(player) => {
             let ship = player_ships
                 .get_mut(player)
                 .expect("player_ships has to contain player with instructions");
             let log_actor = SiteLogActor::Player((*player, ship.fitting.layout));
-            let free_cargo = ship.cargo.free(statics, &ship.fitting);
-            (log_actor, &ship.fitting, &mut ship.status, free_cargo)
+            (log_actor, ship)
         }
         Actor::Npc(npc_index) => {
             let npc = entities::get_mut_npc(site_entities, *npc_index);
-            let log_actor = SiteLogActor::Npc((npc.faction, npc.fitting.layout));
-            let free_cargo = npc.cargo.free(statics, &npc.fitting);
-            (log_actor, &npc.fitting, &mut npc.status, free_cargo)
+            let log_actor = SiteLogActor::Npc((npc.faction, npc.ship.fitting.layout));
+            (log_actor, &mut npc.ship)
         }
     };
-    let loot = if let Some((targeted, details)) =
-        apply_targeted_to_origin(statics, fitting, status, module_index)
+    let free_cargo = ship.cargo.free(statics, &ship.fitting);
+    if let Some((targeted, details)) =
+        apply_targeted_to_origin(statics, &ship.fitting, &mut ship.status, module_index)
     {
         #[allow(clippy::option_if_let_else)]
-        if let Some(target) = site_entities.get_mut(target_index_in_site as usize) {
+        let loot = if let Some(target) = site_entities.get_mut(target_index_in_site as usize) {
             let loot = apply_targeted_to_target(player_ships, target, details, free_cargo);
 
             let site_log_target = SiteLogActor::from(player_ships, target);
@@ -88,22 +85,17 @@ pub fn apply_targeted(
             loot
         } else {
             Cargo::default()
-        }
-    } else {
-        Cargo::default()
-    };
+        };
 
-    match actor {
-        Actor::Player(player) => {
-            let ship = player_ships
-                .get_mut(player)
-                .expect("player_ships has to contain player with instructions");
-            ship.cargo = ship.cargo.add(&loot);
-        }
-        Actor::Npc(npc_index) => {
-            let npc = entities::get_mut_npc(site_entities, *npc_index);
-            npc.cargo = npc.cargo.add(&loot);
-        }
+        // Add loot to origin ship
+        let ship = match actor {
+            Actor::Player(player) => player_ships.get_mut(player).unwrap(),
+            Actor::Npc(npc_index) => {
+                let npc = entities::get_mut_npc(site_entities, *npc_index);
+                &mut npc.ship
+            }
+        };
+        ship.cargo = ship.cargo.add(&loot);
     }
 }
 
@@ -161,7 +153,7 @@ fn apply_targeted_to_target(
             Cargo { ore }
         }
         SiteEntity::Npc(npc) => {
-            npc.status = apply_to_target(npc.status, &module.effects_target);
+            npc.ship.status = apply_to_target(npc.ship.status, &module.effects_target);
             Cargo::default()
         }
         SiteEntity::Player(player) => {
@@ -188,7 +180,7 @@ pub fn self_destruct(
         }
         Actor::Npc(npc_index) => {
             let npc = entities::get_mut_npc(site_entities, *npc_index);
-            npc.status = Status::DEAD;
+            npc.ship.status = Status::DEAD;
         }
     }
     // No need to add this to the site log. It logs the dead ship anyway.
