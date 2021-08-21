@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use anyhow::anyhow;
 use async_std::task::{sleep, spawn};
 use typings::fixed::Statics;
 
@@ -25,17 +26,19 @@ async fn do_loop() -> ! {
     }
 }
 
+// TODO: ensure players in warp warp to existing site
+
 fn once(statics: &Statics) -> anyhow::Result<()> {
     let measure = Instant::now();
-    site_round::all(statics)?;
+    site_round::all(statics).map_err(|err| anyhow!("gameloop::site_round {}", err))?;
     let site_round_took = measure.elapsed();
 
     let measure = Instant::now();
-    ship::all()?;
+    ship::all().map_err(|err| anyhow!("gameloop::ship {}", err))?;
     let ship_took = measure.elapsed();
 
     let measure = Instant::now();
-    sites::all(statics)?;
+    sites::all(statics).map_err(|err| anyhow!("gameloop::sites {}", err))?;
     let sites_took = measure.elapsed();
 
     println!(

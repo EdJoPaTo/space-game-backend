@@ -12,7 +12,9 @@ use crate::persist::player::{
     read_player_site_instructions, write_player_location, write_player_ship,
     write_player_site_instructions,
 };
-use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
+use crate::persist::site::{
+    read_site_entities, read_sites_everywhere, remove_site, write_site_entities,
+};
 use crate::round::advance;
 
 mod npc_instructions;
@@ -56,7 +58,7 @@ fn handle(
     site: Site,
     players_warping_in: &[Player],
 ) -> anyhow::Result<()> {
-    let mut site_entities = read_site_entities(solarsystem, site).unwrap_or_default();
+    let mut site_entities = read_site_entities(solarsystem, site).unwrap();
 
     let players_in_site = {
         let mut result = Vec::new();
@@ -122,10 +124,20 @@ fn handle(
     let mut some_error = false;
     let error_prefix = format!("ERROR handle site {} {:?}", solarsystem, site);
 
-    if let Err(err) = write_site_entities(solarsystem, site, &site_entities) {
+    if site_entities.is_empty() {
+        println!(
+            "gameloop::site_round Remove empty site {} {:?}",
+            solarsystem, site
+        );
+        if let Err(err) = remove_site(solarsystem, site) {
+            some_error = true;
+            eprintln!("{} remove_site {}", error_prefix, err);
+        }
+    } else if let Err(err) = write_site_entities(solarsystem, site, &site_entities) {
         some_error = true;
         eprintln!("{} write_site_entities {}", error_prefix, err);
     }
+
     for (player, instructions) in player_instructions {
         if let Err(err) = write_player_site_instructions(player, &instructions) {
             some_error = true;

@@ -67,7 +67,7 @@ fn generate_asteroid_belts(
                 },
             }));
         }
-        crate::persist::site::add(solarsystem, planet, site, &entities)?;
+        crate::persist::site::add_site(solarsystem, planet, site, &entities)?;
     }
 
     Ok(())

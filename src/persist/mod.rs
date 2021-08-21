@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::module_name_repetitions)]
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,8 +14,15 @@ fn read<P: AsRef<Path>, T>(file: P) -> T
 where
     T: serde::de::DeserializeOwned + Default,
 {
-    let content = fs::read_to_string(file).unwrap_or_default();
-    serde_yaml::from_str(&content).unwrap_or_default()
+    let file = file.as_ref();
+    if let Ok(content) = fs::read_to_string(file) {
+        match serde_yaml::from_str(&content) {
+            Ok(result) => result,
+            Err(err) => panic!("failed to deserialize {:?} {}", file, err),
+        }
+    } else {
+        T::default()
+    }
 }
 
 fn read_meh<P: AsRef<Path>, T>(file: P) -> anyhow::Result<T>

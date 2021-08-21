@@ -9,7 +9,7 @@ use typings::persist::ship::Fitting;
 use typings::persist::site::{Site, SitesNearPlanet};
 use typings::persist::site_entity::{Npc, SiteEntity};
 
-use super::{read_meh, write};
+use super::{delete, read_meh, write};
 
 // TODO: mutex on solarsystem for read and write access
 // read needs probably public and private methods to prevent deadlock?
@@ -49,6 +49,13 @@ pub fn write_site_entities(
     site: Site,
     entities: &[SiteEntity],
 ) -> Result<()> {
+    if entities.is_empty() {
+        return Err(anyhow::anyhow!(
+            "dont write empty site entities. remove_site instead {} {:?}",
+            solarsystem,
+            site
+        ));
+    }
     write(&filename_site_entities(solarsystem, site), &entities)
 }
 
@@ -56,7 +63,7 @@ fn write_sites(solarsystem: Solarsystem, sites: &SitesNearPlanet) -> Result<()> 
     write(&filename_sites(solarsystem), sites)
 }
 
-pub fn add(
+pub fn add_site(
     solarsystem: Solarsystem,
     planet: u8,
     site: Site,
@@ -69,10 +76,12 @@ pub fn add(
     write_sites(solarsystem, &sites)
 }
 
-pub fn remove(solarsystem: Solarsystem, site: Site) -> Result<()> {
+pub fn remove_site(solarsystem: Solarsystem, site: Site) -> Result<()> {
     let mut sites = read_sites(solarsystem)?;
     sites.remove(site);
-    write_sites(solarsystem, &sites)
+    write_sites(solarsystem, &sites)?;
+    delete(&filename_site_entities(solarsystem, site))?;
+    Ok(())
 }
 
 pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
