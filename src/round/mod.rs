@@ -173,6 +173,7 @@ fn finishup_entities(
                         faction: npc.faction,
                         fitting: npc.fitting.clone(),
                         status,
+                        cargo: npc.cargo.clone(),
                     }));
                 } else {
                     site_log.push(SiteLog::RapidUnscheduledDisassembly(SiteLogActor::Npc((

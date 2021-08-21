@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use typings::fixed::module::targeted::Targeted;
+use typings::fixed::round_effect::RoundEffect;
 use typings::fixed::{module, Statics};
 use typings::frontread::site_log::{SiteLog, SiteLogActor};
 use typings::persist::player::Player;
-use typings::persist::ship::{Fitting, Ship, Status};
+use typings::persist::ship::{Cargo, CargoAmounts, Fitting, Ship, Status};
 use typings::persist::site_entity::SiteEntity;
 
 use super::effect::{apply_to_origin, apply_to_target};
@@ -55,25 +56,28 @@ pub fn apply_targeted(
     target_index_in_site: u8,
     site_log: &mut Vec<SiteLog>,
 ) {
-    let (site_log_origin, fitting, status) = match actor {
+    let (site_log_origin, fitting, status, free_cargo) = match actor {
         Actor::Player(player) => {
             let ship = player_ships
                 .get_mut(player)
                 .expect("player_ships has to contain player with instructions");
             let log_actor = SiteLogActor::Player((*player, ship.fitting.layout));
-            (log_actor, &ship.fitting, &mut ship.status)
+            let free_cargo = ship.cargo.free(statics, &ship.fitting);
+            (log_actor, &ship.fitting, &mut ship.status, free_cargo)
         }
         Actor::Npc(npc_index) => {
             let npc = entities::get_mut_npc(site_entities, *npc_index);
             let log_actor = SiteLogActor::Npc((npc.faction, npc.fitting.layout));
-            (log_actor, &npc.fitting, &mut npc.status)
+            let free_cargo = npc.cargo.free(statics, &npc.fitting);
+            (log_actor, &npc.fitting, &mut npc.status, free_cargo)
         }
     };
-    if let Some((targeted, details)) =
+    let loot = if let Some((targeted, details)) =
         apply_targeted_to_origin(statics, fitting, status, module_index)
     {
+        #[allow(clippy::option_if_let_else)]
         if let Some(target) = site_entities.get_mut(target_index_in_site as usize) {
-            apply_targeted_to_target(player_ships, target, details);
+            let loot = apply_targeted_to_target(player_ships, target, details, free_cargo);
 
             let site_log_target = SiteLogActor::from(player_ships, target);
             site_log.push(SiteLog::ModuleTargeted((
@@ -81,6 +85,24 @@ pub fn apply_targeted(
                 targeted,
                 site_log_target,
             )));
+            loot
+        } else {
+            Cargo::default()
+        }
+    } else {
+        Cargo::default()
+    };
+
+    match actor {
+        Actor::Player(player) => {
+            let ship = player_ships
+                .get_mut(player)
+                .expect("player_ships has to contain player with instructions");
+            ship.cargo = ship.cargo.add(&loot);
+        }
+        Actor::Npc(npc_index) => {
+            let npc = entities::get_mut_npc(site_entities, *npc_index);
+            npc.cargo = npc.cargo.add(&loot);
         }
     }
 }
@@ -107,24 +129,47 @@ fn apply_targeted_to_origin<'s>(
     None
 }
 
+#[must_use]
+/// Returns the loot
 fn apply_targeted_to_target(
     player_ships: &mut HashMap<Player, Ship>,
     target: &mut SiteEntity,
     module: &module::targeted::Details,
-) {
+    free_cargo: CargoAmounts,
+) -> Cargo {
     match target {
-        SiteEntity::Facility(_) => { /* Currently immune */ }
+        SiteEntity::Facility(_) => {
+            // Currently immune
+            Cargo::default()
+        }
         SiteEntity::Lifeless(l) => {
             l.status = apply_to_target(l.status, &module.effects_target);
+
+            let ore = module
+                .effects_target
+                .iter()
+                .find_map(|o| match o {
+                    RoundEffect::Mine(amount) => Some(*amount),
+                    _ => None,
+                })
+                .map_or(0, |mining_strength| {
+                    let amount = mining_strength.min(l.remaining_ore).min(free_cargo.ore);
+                    l.remaining_ore -= amount;
+                    amount
+                });
+
+            Cargo { ore }
         }
         SiteEntity::Npc(npc) => {
             npc.status = apply_to_target(npc.status, &module.effects_target);
+            Cargo::default()
         }
         SiteEntity::Player(player) => {
             let target_ship = player_ships
                 .get_mut(player)
                 .expect("player in site has to be in player_ships");
             target_ship.status = apply_to_target(target_ship.status, &module.effects_target);
+            Cargo::default()
         }
     }
 }
