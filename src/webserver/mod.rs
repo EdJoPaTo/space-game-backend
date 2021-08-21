@@ -17,12 +17,15 @@ mod site_entity;
 
 pub fn init() -> tide::Server<()> {
     let mut app = tide::new();
+
+    #[cfg(debug_assertions)]
     app.with(tide::utils::Before(|request: Request<()>| async {
         let method = request.method();
         let path = request.url().path();
         println!("HTTP-REQUEST {} {}", method, path);
         request
     }));
+
     app.with(After(|mut res: Response| async {
         if let Some(err) = res.error() {
             let msg = format!("Error: {:?}", err);
@@ -38,6 +41,7 @@ pub fn init() -> tide::Server<()> {
             .content_type(mime::HTML)
             .build())
     });
+
     app.at("/player/:player/location").get(player_location);
     app.at("/player/:player/ship").get(player_ship);
     app.at("/player/:player/station-assets/:solarsystem/:station")
