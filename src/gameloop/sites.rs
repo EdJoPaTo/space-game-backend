@@ -5,7 +5,7 @@ use typings::fixed::npc_faction::NpcFaction;
 use typings::fixed::shiplayout::ShipLayout;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::fixed::Statics;
-use typings::persist::ship::{Fitting, Status};
+use typings::persist::ship::Fitting;
 use typings::persist::site::{Site, SitesNearPlanet};
 use typings::persist::site_entity::{self, Npc, SiteEntity};
 
@@ -57,15 +57,10 @@ fn generate_asteroid_belts(
         let site = Site::AsteroidField(generate_unique(&mut existing));
         let mut entities = Vec::new();
         for _ in 0..5 {
-            entities.push(SiteEntity::Lifeless(site_entity::Lifeless {
-                id: Lifeless::Asteroid,
-                // TODO: use statics
-                status: Status {
-                    capacitor: 0,
-                    hitpoints_armor: 0,
-                    hitpoints_structure: 42,
-                },
-            }));
+            entities.push(SiteEntity::Lifeless(site_entity::Lifeless::new(
+                &statics.lifeless,
+                Lifeless::Asteroid,
+            )));
         }
         crate::persist::site::add_site(solarsystem, planet, site, &entities)?;
     }

@@ -152,12 +152,14 @@ fn finishup_entities(
                 remaining.push(entity.clone());
             }
             SiteEntity::Lifeless(l) => {
-                if l.status.is_alive() {
-                    remaining.push(entity.clone());
-                } else {
+                if !l.status.is_alive() {
                     site_log.push(SiteLog::RapidUnscheduledDisassembly(
                         SiteLogActor::Lifeless(l.id),
                     ));
+                } else if l.is_collapsed() {
+                    site_log.push(SiteLog::Collapse(SiteLogActor::Lifeless(l.id)));
+                } else {
+                    remaining.push(entity.clone());
                 }
             }
             SiteEntity::Npc(npc) => {
