@@ -2,7 +2,7 @@ use anyhow::Result;
 use typings::fixed::solarsystem::Solarsystem;
 use typings::frontread::site_log::SiteLog;
 use typings::frontrw::site_instruction::{self, SiteInstruction};
-use typings::persist::player::Player;
+use typings::persist::player::{General, Player};
 use typings::persist::player_assets::PlayerStationAssets;
 use typings::persist::player_location::PlayerLocation;
 use typings::persist::ship::Ship;
@@ -16,6 +16,9 @@ fn filename_station_assets(player: Player, solarsystem: Solarsystem, station: u8
         solarsystem,
         station
     )
+}
+fn filename_player_generals(player: Player) -> String {
+    format!("persist/player-generals/{}.yaml", player.to_string())
 }
 fn filename_player_location(player: Player) -> String {
     format!("persist/player-location/{}.yaml", player.to_string())
@@ -47,6 +50,13 @@ pub fn write_station_assets(
         &filename_station_assets(player, solarsystem, station),
         assets,
     )
+}
+
+pub fn read_player_generals(player: Player) -> General {
+    read(&filename_player_generals(player))
+}
+pub fn write_player_generals(player: Player, generals: &General) -> Result<()> {
+    write(&filename_player_generals(player), generals)
 }
 
 pub fn read_player_location(player: Player) -> PlayerLocation {

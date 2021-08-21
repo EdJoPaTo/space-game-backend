@@ -7,7 +7,8 @@ use typings::persist::site::Site;
 use typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::{
-    read_player_location, read_player_ship, write_player_location, write_player_ship,
+    read_player_generals, read_player_location, read_player_ship, write_player_generals,
+    write_player_location, write_player_ship,
 };
 use crate::persist::site::{read_site_entities, write_site_entities};
 
@@ -68,6 +69,17 @@ fn do_instruction(
                 player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
+        }
+        StationInstruction::SellOre => {
+            let mut generals = read_player_generals(player);
+            let mut ship = read_player_ship(player);
+            let ore = ship.cargo.ore;
+
+            generals.paperclips += u64::from(ore) * 500;
+            ship.cargo.ore = 0;
+
+            write_player_generals(player, &generals)?;
+            write_player_ship(player, &ship)?;
         }
     }
 

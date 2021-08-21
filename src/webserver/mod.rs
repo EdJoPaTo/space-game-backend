@@ -8,7 +8,8 @@ use typings::persist::player::Player;
 
 use crate::persist::player::{
     add_player_site_instructions, list_players_with_site_log, pop_player_site_log,
-    read_player_location, read_player_ship, read_player_site_instructions, read_station_assets,
+    read_player_generals, read_player_location, read_player_ship, read_player_site_instructions,
+    read_station_assets,
 };
 use crate::persist::site::read_sites;
 use crate::station;
@@ -42,6 +43,7 @@ pub fn init() -> tide::Server<()> {
             .build())
     });
 
+    app.at("/player/:player/generals").get(player_generals);
     app.at("/player/:player/location").get(player_location);
     app.at("/player/:player/ship").get(player_ship);
     app.at("/player/:player/station-assets/:solarsystem/:station")
@@ -70,6 +72,13 @@ where
         .body(serde_json::to_string_pretty(body)?)
         .content_type(mime::JSON)
         .build())
+}
+
+#[allow(clippy::unused_async)]
+async fn player_generals(req: Request<()>) -> tide::Result {
+    let player = req.param("player")?.parse()?;
+    let body = read_player_generals(player);
+    tide_json_response(&body)
 }
 
 #[allow(clippy::unused_async)]
