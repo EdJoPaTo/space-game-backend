@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
-use space_game_typings::player::location::{PlayerLocation, PlayerLocationStation};
+use space_game_typings::player::location::{
+    PlayerLocation, PlayerLocationSite, PlayerLocationStation, PlayerLocationWarp,
+};
 use space_game_typings::player::Player;
 use space_game_typings::site::instruction::Instruction;
 use space_game_typings::site::{advance, Entity, Log, Site};
@@ -118,6 +120,16 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
                 &error_prefix,
                 &mut some_error,
             );
+            if let Err(err) = write_player_location(
+                player,
+                PlayerLocation::Warp(PlayerLocationWarp {
+                    solarsystem,
+                    towards: site,
+                }),
+            ) {
+                some_error = true;
+                eprintln!("{} docking write_player_location {}", error_prefix, err);
+            }
         }
 
         if let Err(err) = add_entity_warping(solarsystem, site, entity) {
@@ -134,6 +146,13 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
                 &error_prefix,
                 &mut some_error,
             );
+            if let Err(err) = write_player_location(
+                *player,
+                PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
+            ) {
+                some_error = true;
+                eprintln!("{} docking write_player_location {}", error_prefix, err);
+            }
         }
     }
 
