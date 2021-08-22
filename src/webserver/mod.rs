@@ -1,17 +1,18 @@
 use space_game_typings::fixed::Statics;
-use space_game_typings::frontrw::site_instruction::SiteInstruction;
 use space_game_typings::frontrw::station_instruction::StationInstruction;
 use space_game_typings::persist::player::Player;
+use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::site::instruction::Instruction;
+use space_game_typings::site::Entity;
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 
 use crate::persist::player::{
     add_player_site_instructions, list_players_with_site_log, pop_player_site_log,
-    read_player_generals, read_player_location, read_player_ship, read_player_site_instructions,
-    read_station_assets,
+    read_player_generals, read_player_location, read_player_site_instructions, read_station_assets,
 };
-use crate::persist::site::read_sites;
+use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
 use crate::station;
 
 mod site_entity;
@@ -91,7 +92,36 @@ async fn player_location(req: Request<()>) -> tide::Result {
 #[allow(clippy::unused_async)]
 async fn player_ship(req: Request<()>) -> tide::Result {
     let player = req.param("player")?.parse()?;
-    let body = read_player_ship(player);
+    let location = read_player_location(player);
+    let body = match location {
+        PlayerLocation::Site(s) => {
+            let entities = read_site_entities(s.solarsystem, s.site)?;
+            let ship = entities
+                .iter()
+                .find_map(|e| match e {
+                    Entity::Player((p, ship)) if p == &player => Some(ship),
+                    _ => None,
+                })
+                .expect("player has to be in the site of its location");
+            ship.clone()
+        }
+        PlayerLocation::Station(s) => read_station_assets(player, s.solarsystem, s.station)
+            .ships
+            .last()
+            .cloned()
+            .unwrap_or_default(),
+        PlayerLocation::Warp(w) => {
+            let entities = read_entitiy_warping(w.solarsystem);
+            let ship = entities
+                .iter()
+                .find_map(|(_site, entity)| match entity {
+                    Entity::Player((p, ship)) if p == &player => Some(ship),
+                    _ => None,
+                })
+                .expect("player has to be in warp to its location");
+            ship.clone()
+        }
+    };
     tide_json_response(&body)
 }
 
@@ -130,7 +160,7 @@ async fn get_site_instructions(req: Request<()>) -> tide::Result {
 #[allow(clippy::unused_async)]
 async fn post_site_instructions(mut req: Request<()>) -> tide::Result {
     let player = req.param("player")?.parse()?;
-    let instructions = req.body_json::<Vec<SiteInstruction>>().await?;
+    let instructions = req.body_json::<Vec<Instruction>>().await?;
     println!(
         "SiteInstructions for player {:?} ({}): {:?}",
         player,

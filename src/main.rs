@@ -4,7 +4,6 @@ use space_game_typings::fixed::Statics;
 
 mod gameloop;
 mod persist;
-mod round;
 mod station;
 mod webserver;
 

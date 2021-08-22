@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions)]
 
 use std::fs;
 use std::path::{Path, PathBuf};

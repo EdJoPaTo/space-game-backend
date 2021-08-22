@@ -3,43 +3,26 @@ use std::collections::HashMap;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::persist::player::Player;
-use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::persist::player_location::{PlayerLocation, PlayerLocationStation};
 use space_game_typings::persist::site::Site;
-use space_game_typings::persist::site_entity::SiteEntity;
+use space_game_typings::site::instruction::Instruction;
+use space_game_typings::site::{advance, Entity, Log};
 
 use crate::persist::player::{
-    add_player_site_log, read_all_player_locations, read_player_location, read_player_ship,
-    read_player_site_instructions, write_player_location, write_player_ship,
-    write_player_site_instructions,
+    add_player_site_log, read_player_site_instructions, read_station_assets, write_player_location,
+    write_player_site_instructions, write_station_assets,
 };
 use crate::persist::site::{
-    read_site_entities, read_sites_everywhere, remove_site, write_site_entities,
+    add_entity_warping, pop_entity_warping, read_site_entities, read_sites_everywhere, remove_site,
+    write_site_entities,
 };
-use crate::round::advance;
-
 mod npc_instructions;
 
 pub fn all(statics: &Statics) -> anyhow::Result<()> {
     let mut some_error = false;
 
-    let mut players_in_warp = Vec::new();
-    for (player, location) in read_all_player_locations() {
-        let solarsystem = location.solarsystem();
-        match location {
-            PlayerLocation::Site(_) | PlayerLocation::Station(_) => {}
-            PlayerLocation::Warp(warp) => {
-                players_in_warp.push((player, solarsystem, warp.towards));
-            }
-        }
-    }
-
     for (solarsystem, site) in read_sites_everywhere(&statics.solarsystems) {
-        let players_warping_in = players_in_warp
-            .iter()
-            .filter(|o| o.1 == solarsystem && o.2 == site)
-            .map(|o| o.0)
-            .collect::<Vec<_>>();
-        if let Err(err) = handle(statics, solarsystem, site, &players_warping_in) {
+        if let Err(err) = handle(statics, solarsystem, site) {
             some_error = true;
             eprintln!("ERROR gameloop::site::handle {}", err);
         }
@@ -52,71 +35,38 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 }
 
 #[allow(clippy::too_many_lines)]
-fn handle(
-    statics: &Statics,
-    solarsystem: Solarsystem,
-    site: Site,
-    players_warping_in: &[Player],
-) -> anyhow::Result<()> {
-    let mut site_entities = read_site_entities(solarsystem, site).unwrap();
+fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Result<()> {
+    let outputs = {
+        let mut site_entities = read_site_entities(solarsystem, site).unwrap();
 
-    let players_in_site = {
-        let mut result = Vec::new();
-        for entity in &site_entities {
-            if let SiteEntity::Player(p) = entity {
-                result.push(*p);
+        let mut warping_in = pop_entity_warping(solarsystem, site)?;
+        site_entities.append(&mut warping_in);
+
+        let mut instructions: HashMap<usize, Vec<Instruction>> = HashMap::new();
+
+        for (index, entity) in site_entities.iter().enumerate() {
+            if let Entity::Player((player, _)) = entity {
+                let mut additionals = read_player_site_instructions(*player);
+                let all = instructions.entry(index).or_default();
+                all.append(&mut additionals);
             }
         }
-        result
-    };
-    let all_players_involved = {
-        players_in_site
-            .iter()
-            .chain(players_warping_in)
-            .copied()
-            .collect::<Vec<_>>()
-    };
 
-    let mut player_instructions = {
-        let mut result = HashMap::new();
-        for player in players_in_site {
-            let instructions = read_player_site_instructions(player);
-            result.insert(player, instructions);
+        for (index, mut additionals) in npc_instructions::generate(site, &site_entities) {
+            let all = instructions.entry(index).or_default();
+            all.append(&mut additionals);
         }
-        result
+
+        advance(statics, solarsystem, site, &site_entities, &instructions)
     };
 
-    let npc_instructions = npc_instructions::generate(site, &site_entities);
-
-    let mut player_ships = HashMap::new();
-    let mut player_locations = HashMap::new();
-
-    for player in all_players_involved.iter().copied() {
-        let ship = read_player_ship(player);
-        player_ships.insert(player, ship);
-        let location = read_player_location(player);
-        player_locations.insert(player, location);
-    }
-
-    let outputs = advance(
-        statics,
-        solarsystem,
-        site,
-        &mut site_entities,
-        &mut player_instructions,
-        &npc_instructions,
-        &mut player_locations,
-        &mut player_ships,
-        players_warping_in,
-    );
-
-    if !outputs.site_log.is_empty() {
+    if !outputs.log.is_empty() {
         println!(
             "site_log {:>15} {:?} {} {:?}",
             solarsystem.to_string(),
             site,
-            outputs.site_log.len(),
-            outputs.site_log,
+            outputs.log.len(),
+            outputs.log,
         );
     }
 
@@ -124,7 +74,71 @@ fn handle(
     let mut some_error = false;
     let error_prefix = format!("ERROR handle site {} {:?}", solarsystem, site);
 
-    if site_entities.is_empty() {
+    for player in outputs.dead {
+        handle_player_log_and_instructions(&outputs.log, player, &error_prefix, &mut some_error);
+        // TODO: home station
+        if let Err(err) = write_player_location(player, PlayerLocation::default()) {
+            some_error = true;
+            eprintln!("{} docking write_player_location {}", error_prefix, err);
+        }
+    }
+
+    for (solarsystem, station, entity) in outputs.docking {
+        if let Entity::Player((player, ship)) = entity {
+            handle_player_log_and_instructions(
+                &outputs.log,
+                player,
+                &error_prefix,
+                &mut some_error,
+            );
+            if let Err(err) = write_player_location(
+                player,
+                PlayerLocation::Station(PlayerLocationStation {
+                    solarsystem,
+                    station,
+                }),
+            ) {
+                some_error = true;
+                eprintln!("{} docking write_player_location {}", error_prefix, err);
+            }
+
+            let mut assets = read_station_assets(player, solarsystem, station);
+            assets.ships.push(ship);
+            if let Err(err) = write_station_assets(player, solarsystem, station, &assets) {
+                some_error = true;
+                eprintln!("{} docking write_station_assets {}", error_prefix, err);
+            }
+        }
+    }
+
+    for (solarsystem, site, entity) in outputs.warping_out {
+        if let Entity::Player((player, _)) = entity {
+            handle_player_log_and_instructions(
+                &outputs.log,
+                player,
+                &error_prefix,
+                &mut some_error,
+            );
+        }
+
+        if let Err(err) = add_entity_warping(solarsystem, site, entity) {
+            some_error = true;
+            eprintln!("{} add_player_warping {}", error_prefix, err);
+        }
+    }
+
+    for entity in &outputs.remaining {
+        if let Entity::Player((player, _)) = entity {
+            handle_player_log_and_instructions(
+                &outputs.log,
+                *player,
+                &error_prefix,
+                &mut some_error,
+            );
+        }
+    }
+
+    if outputs.remaining.is_empty() {
         println!(
             "gameloop::site_round Remove empty site {} {:?}",
             solarsystem, site
@@ -133,40 +147,9 @@ fn handle(
             some_error = true;
             eprintln!("{} remove_site {}", error_prefix, err);
         }
-    } else if let Err(err) = write_site_entities(solarsystem, site, &site_entities) {
+    } else if let Err(err) = write_site_entities(solarsystem, site, &outputs.remaining) {
         some_error = true;
         eprintln!("{} write_site_entities {}", error_prefix, err);
-    }
-
-    for (player, instructions) in player_instructions {
-        if let Err(err) = write_player_site_instructions(player, &instructions) {
-            some_error = true;
-            eprintln!(
-                "{} write_player_instructions {:?} {}",
-                error_prefix, player, err
-            );
-        }
-    }
-    for (player, ship) in player_ships {
-        if let Err(err) = write_player_ship(player, &ship) {
-            some_error = true;
-            eprintln!("{} write_player_ship {:?} {}", error_prefix, player, err);
-        }
-    }
-    for (player, location) in player_locations {
-        if let Err(err) = write_player_location(player, location) {
-            some_error = true;
-            eprintln!(
-                "{} write_player_location {:?} {}",
-                error_prefix, player, err
-            );
-        }
-    }
-    for player in all_players_involved {
-        if let Err(err) = add_player_site_log(player, &outputs.site_log) {
-            some_error = true;
-            eprintln!("{} add_player_sitelog {:?} {}", error_prefix, player, err);
-        }
     }
 
     if some_error {
@@ -176,5 +159,24 @@ fn handle(
         ))
     } else {
         Ok(())
+    }
+}
+
+fn handle_player_log_and_instructions(
+    log: &[Log],
+    player: Player,
+    error_prefix: &str,
+    some_error: &mut bool,
+) {
+    if let Err(err) = add_player_site_log(player, log) {
+        *some_error = true;
+        eprintln!("{} add_player_site_log {:?} {}", error_prefix, player, err);
+    }
+    if let Err(err) = write_player_site_instructions(player, &[]) {
+        *some_error = true;
+        eprintln!(
+            "{} write_player_instructions {:?} {}",
+            error_prefix, player, err
+        );
     }
 }

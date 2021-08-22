@@ -1,11 +1,10 @@
 use anyhow::Result;
 use space_game_typings::fixed::solarsystem::Solarsystem;
-use space_game_typings::frontread::site_log::SiteLog;
-use space_game_typings::frontrw::site_instruction::{self, SiteInstruction};
 use space_game_typings::persist::player::{General, Player};
 use space_game_typings::persist::player_assets::PlayerStationAssets;
 use space_game_typings::persist::player_location::PlayerLocation;
-use space_game_typings::persist::ship::Ship;
+use space_game_typings::site::instruction::{filter_possible, Instruction};
+use space_game_typings::site::Log;
 
 use super::{delete, list, read, write};
 
@@ -22,9 +21,6 @@ fn filename_player_generals(player: Player) -> String {
 }
 fn filename_player_location(player: Player) -> String {
     format!("persist/player-location/{}.yaml", player.to_string())
-}
-fn filename_player_ship(player: Player) -> String {
-    format!("persist/player-ship/{}.yaml", player.to_string())
 }
 fn filename_instructions(player: Player) -> String {
     format!("persist/player-instructions/{}.yaml", player.to_string())
@@ -80,28 +76,15 @@ pub fn read_all_player_locations() -> Vec<(Player, PlayerLocation)> {
     result
 }
 
-pub fn read_player_ship(player: Player) -> Ship {
-    read(&filename_player_ship(player))
+pub fn read_player_site_instructions(player: Player) -> Vec<Instruction> {
+    let all: Vec<Instruction> = read(&filename_instructions(player));
+    filter_possible(&all)
 }
-pub fn write_player_ship(player: Player, ship: &Ship) -> Result<()> {
-    write(&filename_player_ship(player), ship)
-}
-
-pub fn read_player_site_instructions(player: Player) -> Vec<SiteInstruction> {
-    let all: Vec<SiteInstruction> = read(&filename_instructions(player));
-    site_instruction::filter_possible(&all)
-}
-pub fn write_player_site_instructions(
-    player: Player,
-    instructions: &[SiteInstruction],
-) -> Result<()> {
-    let possible = site_instruction::filter_possible(instructions);
+pub fn write_player_site_instructions(player: Player, instructions: &[Instruction]) -> Result<()> {
+    let possible = filter_possible(instructions);
     write(&filename_instructions(player), &possible)
 }
-pub fn add_player_site_instructions(
-    player: Player,
-    instructions: &[SiteInstruction],
-) -> Result<()> {
+pub fn add_player_site_instructions(player: Player, instructions: &[Instruction]) -> Result<()> {
     let mut all = read_player_site_instructions(player);
     for additional in instructions {
         all.push(*additional);
@@ -109,20 +92,20 @@ pub fn add_player_site_instructions(
     write_player_site_instructions(player, &all)
 }
 
-fn read_player_site_log(player: Player) -> Vec<SiteLog> {
+fn read_player_site_log(player: Player) -> Vec<Log> {
     read(&filename_site_log(player))
 }
-fn write_player_site_log(player: Player, site_log: &[SiteLog]) -> Result<()> {
+fn write_player_site_log(player: Player, site_log: &[Log]) -> Result<()> {
     write(filename_site_log(player), &site_log)
 }
-pub fn add_player_site_log(player: Player, site_log: &[SiteLog]) -> Result<()> {
+pub fn add_player_site_log(player: Player, site_log: &[Log]) -> Result<()> {
     let mut all = read_player_site_log(player);
     for additional in site_log {
         all.push(*additional);
     }
     write_player_site_log(player, &all)
 }
-pub fn pop_player_site_log(player: Player) -> Result<Vec<SiteLog>> {
+pub fn pop_player_site_log(player: Player) -> Result<Vec<Log>> {
     let log = read_player_site_log(player);
     delete(&filename_site_log(player))?;
     Ok(log)

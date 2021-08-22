@@ -1,15 +1,15 @@
 use space_game_typings::fixed::npc_faction::NpcFaction;
-use space_game_typings::frontrw::site_instruction::{ModuleTargeted, SiteInstruction};
 use space_game_typings::persist::player::Player;
 use space_game_typings::persist::site::Site;
-use space_game_typings::persist::site_entity::SiteEntity;
+use space_game_typings::site::instruction::{Instruction, UseModuleTargeted};
+use space_game_typings::site::Entity;
 
 #[allow(clippy::cast_possible_truncation)]
-pub fn generate(_site: Site, site_entities: &[SiteEntity]) -> Vec<(usize, Vec<SiteInstruction>)> {
+pub fn generate(_site: Site, site_entities: &[Entity]) -> Vec<(usize, Vec<Instruction>)> {
     let mut result = Vec::new();
     for (site_index, entity) in site_entities.iter().enumerate() {
-        if let SiteEntity::Npc(npc) = entity {
-            match npc.faction {
+        if let Entity::Npc((faction, ship)) = entity {
+            match faction {
                 NpcFaction::Guards => {
                     // TODO: attack bad players
                 }
@@ -17,8 +17,8 @@ pub fn generate(_site: Site, site_entities: &[SiteEntity]) -> Vec<(usize, Vec<Si
                     let mut instructions = Vec::new();
                     if let Some((target_index, _target_player)) = get_players(site_entities).first()
                     {
-                        for module_index in 0..npc.ship.fitting.slots_targeted.len() {
-                            instructions.push(SiteInstruction::ModuleTargeted(ModuleTargeted {
+                        for module_index in 0..ship.fitting.slots_targeted.len() {
+                            instructions.push(Instruction::ModuleTargeted(UseModuleTargeted {
                                 target_index_in_site: *target_index as u8,
                                 module_index: module_index as u8,
                             }));
@@ -32,12 +32,12 @@ pub fn generate(_site: Site, site_entities: &[SiteEntity]) -> Vec<(usize, Vec<Si
     result
 }
 
-fn get_players(site_entities: &[SiteEntity]) -> Vec<(usize, Player)> {
+fn get_players(site_entities: &[Entity]) -> Vec<(usize, Player)> {
     site_entities
         .iter()
         .enumerate()
         .filter_map(|(i, entity)| {
-            if let SiteEntity::Player(player) = entity {
+            if let Entity::Player((player, _)) = entity {
                 Some((i, *player))
             } else {
                 None

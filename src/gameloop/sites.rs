@@ -5,9 +5,9 @@ use space_game_typings::fixed::npc_faction::NpcFaction;
 use space_game_typings::fixed::shiplayout::ShipLayout;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
-use space_game_typings::persist::ship::{Fitting, Ship};
 use space_game_typings::persist::site::{Site, SitesNearPlanet};
-use space_game_typings::persist::site_entity::{self, Npc, SiteEntity};
+use space_game_typings::ship::{Fitting, Ship};
+use space_game_typings::site::{Entity, EntityLifeless};
 
 use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
 
@@ -57,7 +57,7 @@ fn generate_asteroid_belts(
         let site = Site::AsteroidField(generate_unique(&mut existing));
         let mut entities = Vec::new();
         for _ in 0..5 {
-            entities.push(SiteEntity::Lifeless(site_entity::Lifeless::new(
+            entities.push(Entity::Lifeless(EntityLifeless::new(
                 &statics.lifeless,
                 Lifeless::Asteroid,
             )));
@@ -80,7 +80,7 @@ fn spawn_asteroid_belt_pirates(
 
             let npc_amount = entities
                 .iter()
-                .filter(|o| matches!(o, SiteEntity::Npc(_)))
+                .filter(|o| matches!(o, Entity::Npc(_)))
                 .count();
 
             if npc_amount == 0 && rng.gen_range(0..30) == 0 {
@@ -90,10 +90,10 @@ fn spawn_asteroid_belt_pirates(
                     slots_untargeted: vec![],
                     slots_passive: vec![],
                 };
-                entities.push(SiteEntity::Npc(Npc {
-                    faction: NpcFaction::Pirates,
-                    ship: Ship::new(statics, fitting),
-                }));
+                entities.push(Entity::Npc((
+                    NpcFaction::Pirates,
+                    Ship::new(statics, fitting),
+                )));
                 write_site_entities(solarsystem, site, &entities)?;
             }
         }

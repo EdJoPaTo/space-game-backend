@@ -4,7 +4,6 @@ use anyhow::anyhow;
 use async_std::task::{sleep, spawn};
 use space_game_typings::fixed::Statics;
 
-mod ship;
 mod site_round;
 mod sites;
 
@@ -34,16 +33,9 @@ fn once(statics: &Statics) -> anyhow::Result<()> {
     let site_round_took = measure.elapsed();
 
     let measure = Instant::now();
-    ship::all().map_err(|err| anyhow!("gameloop::ship {}", err))?;
-    let ship_took = measure.elapsed();
-
-    let measure = Instant::now();
     sites::all(statics).map_err(|err| anyhow!("gameloop::sites {}", err))?;
     let sites_took = measure.elapsed();
 
-    println!(
-        "gameloop::once {:?} {:?} {:?}",
-        site_round_took, ship_took, sites_took
-    );
+    println!("gameloop::once {:?} {:?}", site_round_took, sites_took);
     Ok(())
 }

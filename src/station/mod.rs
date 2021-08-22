@@ -4,11 +4,12 @@ use space_game_typings::frontrw::station_instruction::StationInstruction;
 use space_game_typings::persist::player::Player;
 use space_game_typings::persist::player_location::{PlayerLocation, PlayerLocationSite};
 use space_game_typings::persist::site::Site;
-use space_game_typings::persist::site_entity::SiteEntity;
+use space_game_typings::ship::Ship;
+use space_game_typings::site::Entity;
 
 use crate::persist::player::{
-    read_player_generals, read_player_location, read_player_ship, write_player_generals,
-    write_player_location, write_player_ship,
+    read_player_generals, read_player_location, read_station_assets, write_player_generals,
+    write_player_location, write_station_assets,
 };
 use crate::persist::site::{read_site_entities, write_site_entities};
 
@@ -38,31 +39,37 @@ fn do_instruction(
     solarsystem: Solarsystem,
     station: u8,
 ) -> anyhow::Result<()> {
+    let mut assets = read_station_assets(player, solarsystem, station);
     match instruction {
         StationInstruction::Repair => {
-            let mut ship = read_player_ship(player);
-            let status = ship.fitting.maximum_status(statics);
-            if ship.status != status {
-                eprintln!("repair player ship in station {:?}", player);
-                ship.status = status;
-                write_player_ship(player, &ship)?;
+            for ship in &mut assets.ships {
+                let collateral = ship.fitting.maximum_collateral(statics);
+                if ship.collateral != collateral {
+                    eprintln!("repair player ship in station {:?}", player);
+                    ship.collateral = collateral;
+                }
             }
         }
         StationInstruction::Undock => {
-            let ship = read_player_ship(player);
-            if let Err(err) = ship.fitting.is_valid(statics) {
-                return Err(anyhow::anyhow!(
-                    "That ship wont fly {:?} {:?} {:?}",
-                    player,
-                    err,
-                    ship
-                ));
-            }
+            let ship = if let Some(ship) = assets.ships.last() {
+                if let Err(err) = ship.fitting.is_valid(statics) {
+                    return Err(anyhow::anyhow!(
+                        "That ship wont fly {:?} {:?} {:?}",
+                        player,
+                        err,
+                        ship
+                    ));
+                }
+
+                assets.ships.pop().unwrap()
+            } else {
+                Ship::default()
+            };
 
             let site = Site::Station(station);
 
             let mut entities = read_site_entities(solarsystem, site)?;
-            entities.push(SiteEntity::Player(player));
+            entities.push(Entity::Player((player, ship)));
             write_site_entities(solarsystem, site, &entities)?;
 
             write_player_location(
@@ -72,16 +79,16 @@ fn do_instruction(
         }
         StationInstruction::SellOre => {
             let mut generals = read_player_generals(player);
-            let mut ship = read_player_ship(player);
-            let ore = ship.cargo.ore;
 
-            generals.paperclips += u64::from(ore) * 500;
-            ship.cargo.ore = 0;
+            for ship in &mut assets.ships {
+                let ore = ship.cargo.ore;
+                generals.paperclips += u64::from(ore) * 500;
+                ship.cargo.ore = 0;
+            }
 
             write_player_generals(player, &generals)?;
-            write_player_ship(player, &ship)?;
         }
     }
-
+    write_station_assets(player, solarsystem, station, &assets)?;
     Ok(())
 }
