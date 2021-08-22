@@ -7,7 +7,7 @@ use space_game_typings::player::location::{
 };
 use space_game_typings::player::Player;
 use space_game_typings::site::instruction::Instruction;
-use space_game_typings::site::{advance, Entity, Log, Site};
+use space_game_typings::site::{advance, Entity, Log, Output, Site};
 
 use crate::persist::player::{
     add_player_site_log, read_player_site_instructions, read_station_assets, write_player_location,
@@ -37,10 +37,15 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 
 #[allow(clippy::too_many_lines)]
 fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Result<()> {
-    let outputs = {
+    let output = {
+        let mut log = Vec::new();
+
         let mut site_entities = read_site_entities(solarsystem, site).unwrap();
 
         let mut warping_in = pop_entity_warping(solarsystem, site)?;
+        for entity in &warping_in {
+            log.push(Log::WarpIn(entity.into()));
+        }
         site_entities.append(&mut warping_in);
 
         let mut instructions: HashMap<usize, Vec<Instruction>> = HashMap::new();
@@ -58,16 +63,19 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
             all.append(&mut additionals);
         }
 
-        advance(statics, solarsystem, site, &site_entities, &instructions)
+        let output = advance(statics, solarsystem, site, &site_entities, &instructions);
+
+        let log = log.iter().chain(&output.log).copied().collect::<Vec<_>>();
+        Output { log, ..output }
     };
 
-    if !outputs.log.is_empty() {
+    if !output.log.is_empty() {
         println!(
             "site_log {:>15} {:?} {} {:?}",
             solarsystem.to_string(),
             site,
-            outputs.log.len(),
-            outputs.log,
+            output.log.len(),
+            output.log,
         );
     }
 
@@ -75,8 +83,8 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
     let mut some_error = false;
     let error_prefix = format!("ERROR handle site {} {:?}", solarsystem, site);
 
-    for player in outputs.dead {
-        handle_player_log_and_instructions(&outputs.log, player, &error_prefix, &mut some_error);
+    for player in output.dead {
+        handle_player_log_and_instructions(&output.log, player, &error_prefix, &mut some_error);
         // TODO: home station
         if let Err(err) = write_player_location(player, PlayerLocation::default()) {
             some_error = true;
@@ -84,14 +92,9 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
         }
     }
 
-    for (solarsystem, station, entity) in outputs.docking {
+    for (solarsystem, station, entity) in output.docking {
         if let Entity::Player((player, ship)) = entity {
-            handle_player_log_and_instructions(
-                &outputs.log,
-                player,
-                &error_prefix,
-                &mut some_error,
-            );
+            handle_player_log_and_instructions(&output.log, player, &error_prefix, &mut some_error);
             if let Err(err) = write_player_location(
                 player,
                 PlayerLocation::Station(PlayerLocationStation {
@@ -112,14 +115,9 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
         }
     }
 
-    for (solarsystem, site, entity) in outputs.warping_out {
+    for (solarsystem, site, entity) in output.warping_out {
         if let Entity::Player((player, _)) = entity {
-            handle_player_log_and_instructions(
-                &outputs.log,
-                player,
-                &error_prefix,
-                &mut some_error,
-            );
+            handle_player_log_and_instructions(&output.log, player, &error_prefix, &mut some_error);
             if let Err(err) = write_player_location(
                 player,
                 PlayerLocation::Warp(PlayerLocationWarp {
@@ -138,10 +136,10 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
         }
     }
 
-    for entity in &outputs.remaining {
+    for entity in &output.remaining {
         if let Entity::Player((player, _)) = entity {
             handle_player_log_and_instructions(
-                &outputs.log,
+                &output.log,
                 *player,
                 &error_prefix,
                 &mut some_error,
@@ -156,7 +154,7 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
         }
     }
 
-    if outputs.remaining.is_empty() {
+    if output.remaining.is_empty() {
         println!(
             "gameloop::site_round Remove empty site {} {:?}",
             solarsystem, site
@@ -165,7 +163,7 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
             some_error = true;
             eprintln!("{} remove_site {}", error_prefix, err);
         }
-    } else if let Err(err) = write_site_entities(solarsystem, site, &outputs.remaining) {
+    } else if let Err(err) = write_site_entities(solarsystem, site, &output.remaining) {
         some_error = true;
         eprintln!("{} write_site_entities {}", error_prefix, err);
     }
