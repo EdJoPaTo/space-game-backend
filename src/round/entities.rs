@@ -1,5 +1,5 @@
-use typings::persist::player::Player;
-use typings::persist::site_entity::{Npc, SiteEntity};
+use space_game_typings::persist::player::Player;
+use space_game_typings::persist::site_entity::{Npc, SiteEntity};
 
 pub fn player_pos(site_entities: &[SiteEntity], player: Player) -> Option<usize> {
     site_entities

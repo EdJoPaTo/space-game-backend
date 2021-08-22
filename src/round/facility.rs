@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use typings::fixed::solarsystem::Solarsystem;
-use typings::frontread::site_log::{SiteLog, SiteLogActor};
-use typings::persist::player::Player;
-use typings::persist::player_location::{
+use space_game_typings::fixed::solarsystem::Solarsystem;
+use space_game_typings::frontread::site_log::{SiteLog, SiteLogActor};
+use space_game_typings::persist::player::Player;
+use space_game_typings::persist::player_location::{
     PlayerLocation, PlayerLocationStation, PlayerLocationWarp,
 };
-use typings::persist::ship::Ship;
-use typings::persist::site::Site;
-use typings::persist::site_entity::SiteEntity;
+use space_game_typings::persist::ship::Ship;
+use space_game_typings::persist::site::Site;
+use space_game_typings::persist::site_entity::SiteEntity;
 
 use super::entities;
 

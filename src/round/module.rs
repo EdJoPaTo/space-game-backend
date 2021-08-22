@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use typings::fixed::module::targeted::Targeted;
-use typings::fixed::round_effect::RoundEffect;
-use typings::fixed::{module, Statics};
-use typings::frontread::site_log::{SiteLog, SiteLogActor};
-use typings::persist::player::Player;
-use typings::persist::ship::{Cargo, CargoAmounts, Fitting, Ship, Status};
-use typings::persist::site_entity::SiteEntity;
+use space_game_typings::fixed::module::targeted::Targeted;
+use space_game_typings::fixed::round_effect::RoundEffect;
+use space_game_typings::fixed::{module, Statics};
+use space_game_typings::frontread::site_log::{SiteLog, SiteLogActor};
+use space_game_typings::persist::player::Player;
+use space_game_typings::persist::ship::{Cargo, CargoAmounts, Fitting, Ship, Status};
+use space_game_typings::persist::site_entity::SiteEntity;
 
 use super::effect::{apply_to_origin, apply_to_target};
 use super::entities;

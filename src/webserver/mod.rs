@@ -1,10 +1,10 @@
+use space_game_typings::fixed::Statics;
+use space_game_typings::frontrw::site_instruction::SiteInstruction;
+use space_game_typings::frontrw::station_instruction::StationInstruction;
+use space_game_typings::persist::player::Player;
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
-use typings::fixed::Statics;
-use typings::frontrw::site_instruction::SiteInstruction;
-use typings::frontrw::station_instruction::StationInstruction;
-use typings::persist::player::Player;
 
 use crate::persist::player::{
     add_player_site_instructions, list_players_with_site_log, pop_player_site_log,

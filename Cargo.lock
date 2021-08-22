@@ -310,23 +310,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
-name = "backend"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-std",
- "rand 0.8.4",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "tide",
- "typings",
- "ureq",
- "url",
-]
-
-[[package]]
 name = "base-x"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1394,6 +1377,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "space-game-backend"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "rand 0.8.4",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "space-game-typings",
+ "tide",
+ "ureq",
+ "url",
+]
+
+[[package]]
+name = "space-game-typings"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1597,16 +1607,6 @@ name = "typenum"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
-
-[[package]]
-name = "typings"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "serde_yaml",
-]
 
 [[package]]
 name = "unicode-bidi"

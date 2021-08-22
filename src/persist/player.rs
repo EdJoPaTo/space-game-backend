@@ -1,11 +1,11 @@
 use anyhow::Result;
-use typings::fixed::solarsystem::Solarsystem;
-use typings::frontread::site_log::SiteLog;
-use typings::frontrw::site_instruction::{self, SiteInstruction};
-use typings::persist::player::{General, Player};
-use typings::persist::player_assets::PlayerStationAssets;
-use typings::persist::player_location::PlayerLocation;
-use typings::persist::ship::Ship;
+use space_game_typings::fixed::solarsystem::Solarsystem;
+use space_game_typings::frontread::site_log::SiteLog;
+use space_game_typings::frontrw::site_instruction::{self, SiteInstruction};
+use space_game_typings::persist::player::{General, Player};
+use space_game_typings::persist::player_assets::PlayerStationAssets;
+use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::persist::ship::Ship;
 
 use super::{delete, list, read, write};
 

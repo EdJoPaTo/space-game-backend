@@ -1,5 +1,5 @@
-use typings::fixed::round_effect::RoundEffect;
-use typings::persist::ship::Status;
+use space_game_typings::fixed::round_effect::RoundEffect;
+use space_game_typings::persist::ship::Status;
 
 const fn apply_damage(mut status: Status, damage: u16) -> Status {
     let structure_dmg = damage.saturating_sub(status.hitpoints_armor);

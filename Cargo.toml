@@ -1,7 +1,10 @@
 [package]
-name = "backend"
+name = "space-game-backend"
+description = "Backend running the untitled space-game"
 version = "0.1.0"
 license = "AGPL-3.0-or-later"
+repository = "https://github.com/EdJoPaTo/space-game-backend"
+authors = ["EdJoPaTo <space-game-backend-rust@edjopato.de>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -38,5 +41,5 @@ features = ["derive"]
 #float_eq = "0.6"
 #tempfile = "3"
 
-[dependencies.typings]
-path = "../typings"
+[dependencies.space-game-typings]
+path = "../space-game-typings"

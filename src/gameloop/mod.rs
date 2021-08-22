@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
 use async_std::task::{sleep, spawn};
-use typings::fixed::Statics;
+use space_game_typings::fixed::Statics;
 
 mod ship;
 mod site_round;

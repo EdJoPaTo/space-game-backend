@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use typings::fixed::solarsystem::Solarsystem;
-use typings::fixed::Statics;
-use typings::persist::player::Player;
-use typings::persist::player_location::PlayerLocation;
-use typings::persist::site::Site;
-use typings::persist::site_entity::SiteEntity;
+use space_game_typings::fixed::solarsystem::Solarsystem;
+use space_game_typings::fixed::Statics;
+use space_game_typings::persist::player::Player;
+use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::persist::site::Site;
+use space_game_typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::{
     add_player_site_log, read_all_player_locations, read_player_location, read_player_ship,

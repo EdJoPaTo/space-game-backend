@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use typings::frontrw::site_instruction::{self, SiteInstruction};
-use typings::persist::player::Player;
+use space_game_typings::frontrw::site_instruction::{self, SiteInstruction};
+use space_game_typings::persist::player::Player;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Actor {
@@ -41,22 +41,20 @@ fn player_sorted_works() {
     let mut example = HashMap::new();
     example.insert(
         Player::Telegram(1),
-        vec![SiteInstruction::Warp(
-            typings::frontrw::site_instruction::Warp {
-                target: typings::persist::site::Site::Station(42),
-            },
-        )],
+        vec![SiteInstruction::Warp(site_instruction::Warp {
+            target: space_game_typings::persist::site::Site::Station(42),
+        })],
     );
     example.insert(
         Player::Telegram(2),
         vec![
-            SiteInstruction::ModuleTargeted(typings::frontrw::site_instruction::ModuleTargeted {
+            SiteInstruction::ModuleTargeted(site_instruction::ModuleTargeted {
                 module_index: 0,
                 target_index_in_site: 0,
             }),
-            SiteInstruction::ModuleUntargeted(
-                typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 },
-            ),
+            SiteInstruction::ModuleUntargeted(site_instruction::ModuleUntargeted {
+                module_index: 0,
+            }),
         ],
     );
     let sorted = sort(&example, &[]);
@@ -65,16 +63,16 @@ fn player_sorted_works() {
         sorted[0],
         (
             Actor::Player(Player::Telegram(2)),
-            SiteInstruction::ModuleUntargeted(
-                typings::frontrw::site_instruction::ModuleUntargeted { module_index: 0 }
-            )
+            SiteInstruction::ModuleUntargeted(site_instruction::ModuleUntargeted {
+                module_index: 0
+            })
         )
     );
     assert_eq!(
         sorted[1],
         (
             Actor::Player(Player::Telegram(2)),
-            SiteInstruction::ModuleTargeted(typings::frontrw::site_instruction::ModuleTargeted {
+            SiteInstruction::ModuleTargeted(site_instruction::ModuleTargeted {
                 module_index: 0,
                 target_index_in_site: 0,
             })
@@ -84,8 +82,8 @@ fn player_sorted_works() {
         sorted[2],
         (
             Actor::Player(Player::Telegram(1)),
-            SiteInstruction::Warp(typings::frontrw::site_instruction::Warp {
-                target: typings::persist::site::Site::Station(42),
+            SiteInstruction::Warp(site_instruction::Warp {
+                target: space_game_typings::persist::site::Site::Station(42),
             })
         )
     );

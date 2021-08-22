@@ -1,13 +1,13 @@
 use rand::Rng;
-use typings::fixed::lifeless::Lifeless;
-use typings::fixed::module::targeted::Targeted;
-use typings::fixed::npc_faction::NpcFaction;
-use typings::fixed::shiplayout::ShipLayout;
-use typings::fixed::solarsystem::Solarsystem;
-use typings::fixed::Statics;
-use typings::persist::ship::{Fitting, Ship};
-use typings::persist::site::{Site, SitesNearPlanet};
-use typings::persist::site_entity::{self, Npc, SiteEntity};
+use space_game_typings::fixed::lifeless::Lifeless;
+use space_game_typings::fixed::module::targeted::Targeted;
+use space_game_typings::fixed::npc_faction::NpcFaction;
+use space_game_typings::fixed::shiplayout::ShipLayout;
+use space_game_typings::fixed::solarsystem::Solarsystem;
+use space_game_typings::fixed::Statics;
+use space_game_typings::persist::ship::{Fitting, Ship};
+use space_game_typings::persist::site::{Site, SitesNearPlanet};
+use space_game_typings::persist::site_entity::{self, Npc, SiteEntity};
 
 use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
 

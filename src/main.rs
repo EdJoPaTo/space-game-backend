@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use typings::fixed::Statics;
+use space_game_typings::fixed::Statics;
 
 mod gameloop;
 mod persist;

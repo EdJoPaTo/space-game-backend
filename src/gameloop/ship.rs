@@ -1,5 +1,5 @@
-use typings::persist::player_location::PlayerLocation;
-use typings::persist::ship::Ship;
+use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::persist::ship::Ship;
 
 use crate::persist::player::{
     read_all_player_locations, read_player_ship, write_player_location, write_player_ship,

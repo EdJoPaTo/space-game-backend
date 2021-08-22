@@ -1,7 +1,7 @@
-use typings::fixed::Statics;
-use typings::persist::player_location::{PlayerLocation, PlayerLocationWarp};
-use typings::persist::site::Site;
-use typings::persist::site_entity::SiteEntity;
+use space_game_typings::fixed::Statics;
+use space_game_typings::persist::player_location::{PlayerLocation, PlayerLocationWarp};
+use space_game_typings::persist::site::Site;
+use space_game_typings::persist::site_entity::SiteEntity;
 
 use crate::persist::player::write_player_location;
 use crate::persist::site::{read_site_entities, read_sites_everywhere, write_site_entities};
