@@ -1,8 +1,7 @@
 use anyhow::Result;
 use space_game_typings::fixed::solarsystem::Solarsystem;
-use space_game_typings::persist::player::{General, Player};
-use space_game_typings::persist::player_assets::PlayerStationAssets;
-use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::player::location::PlayerLocation;
+use space_game_typings::player::{General, Player, StationAssets};
 use space_game_typings::site::instruction::{filter_possible, Instruction};
 use space_game_typings::site::Log;
 
@@ -29,18 +28,14 @@ fn filename_site_log(player: Player) -> String {
     format!("persist/player-sitelog/{}.yaml", player.to_string())
 }
 
-pub fn read_station_assets(
-    player: Player,
-    solarsystem: Solarsystem,
-    station: u8,
-) -> PlayerStationAssets {
+pub fn read_station_assets(player: Player, solarsystem: Solarsystem, station: u8) -> StationAssets {
     read(&filename_station_assets(player, solarsystem, station))
 }
 pub fn write_station_assets(
     player: Player,
     solarsystem: Solarsystem,
     station: u8,
-    assets: &PlayerStationAssets,
+    assets: &StationAssets,
 ) -> Result<()> {
     write(
         &filename_station_assets(player, solarsystem, station),

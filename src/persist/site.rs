@@ -5,9 +5,8 @@ use space_game_typings::fixed::npc_faction::NpcFaction;
 use space_game_typings::fixed::shiplayout::ShipLayout;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::{Solarsystems, Statics};
-use space_game_typings::persist::site::{Site, SitesNearPlanet};
 use space_game_typings::ship::{Fitting, Ship};
-use space_game_typings::site::Entity;
+use space_game_typings::site::{Entity, Site, SitesNearPlanet};
 
 use super::{delete, read, read_meh, write};
 

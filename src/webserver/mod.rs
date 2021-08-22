@@ -1,7 +1,7 @@
 use space_game_typings::fixed::Statics;
 use space_game_typings::frontrw::station_instruction::StationInstruction;
-use space_game_typings::persist::player::Player;
-use space_game_typings::persist::player_location::PlayerLocation;
+use space_game_typings::player::location::PlayerLocation;
+use space_game_typings::player::Player;
 use space_game_typings::site::instruction::Instruction;
 use space_game_typings::site::Entity;
 use tide::http::mime;
