@@ -1,0 +1,6 @@
+.*
+*.md
+/target
+Dockerfile
+
+/persist
