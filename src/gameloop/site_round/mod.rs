@@ -7,7 +7,7 @@ use space_game_typings::player::location::{
 };
 use space_game_typings::player::Player;
 use space_game_typings::site::instruction::Instruction;
-use space_game_typings::site::{advance, Entity, Log, Output, Site};
+use space_game_typings::site::{advance, Entity, Log, Site};
 
 use crate::persist::player::{
     add_player_site_log, read_player_site_instructions, read_station_assets, write_player_location,
@@ -38,15 +38,7 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 #[allow(clippy::too_many_lines)]
 fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Result<()> {
     let output = {
-        let mut log = Vec::new();
-
-        let mut site_entities = read_site_entities(solarsystem, site).unwrap();
-
-        let mut warping_in = pop_entity_warping(solarsystem, site)?;
-        for entity in &warping_in {
-            log.push(Log::WarpIn(entity.into()));
-        }
-        site_entities.append(&mut warping_in);
+        let site_entities = read_site_entities(solarsystem, site).unwrap();
 
         let mut instructions: HashMap<usize, Vec<Instruction>> = HashMap::new();
 
@@ -63,10 +55,15 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
             all.append(&mut additionals);
         }
 
-        let output = advance(statics, solarsystem, site, &site_entities, &instructions);
+        let mut output = advance(statics, solarsystem, site, &site_entities, &instructions);
 
-        let log = log.iter().chain(&output.log).copied().collect::<Vec<_>>();
-        Output { log, ..output }
+        let mut warping_in = pop_entity_warping(solarsystem, site)?;
+        for entity in &warping_in {
+            output.log.push(Log::WarpIn(entity.into()));
+        }
+        output.remaining.append(&mut warping_in);
+
+        output
     };
 
     if !output.log.is_empty() {
