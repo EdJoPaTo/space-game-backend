@@ -5,7 +5,6 @@ use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::{
     PlayerLocation, PlayerLocationSite, PlayerLocationStation, PlayerLocationWarp,
 };
-use space_game_typings::player::Player;
 use space_game_typings::site::instruction::Instruction;
 use space_game_typings::site::{advance, Entity, Log, Site};
 
@@ -19,19 +18,14 @@ use crate::persist::site::{
 };
 mod npc_instructions;
 
-pub fn all(statics: &Statics) -> anyhow::Result<()> {
-    let mut some_error = false;
-
+pub fn all(statics: &Statics) {
     for (solarsystem, site) in read_sites_everywhere(&statics.solarsystems) {
-        if let Err(err) = handle(statics, solarsystem, site) {
-            some_error = true;
-            eprintln!("ERROR gameloop::site::handle {}", err);
-        }
-    }
-    if some_error {
-        Err(anyhow::anyhow!("ERROR gameloop::site::all had some error"))
-    } else {
-        Ok(())
+        handle(statics, solarsystem, site).unwrap_or_else(|err| {
+            panic!(
+                "gameloop::site::handle {:?} {:?} {}",
+                solarsystem, site, err
+            );
+        });
     }
 }
 
@@ -76,120 +70,63 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
         );
     }
 
-    // Nothing after this point is allowed to fail the rest -> Data has to be saved
-    let mut some_error = false;
-    let error_prefix = format!("ERROR handle site {} {:?}", solarsystem, site);
-
     for player in output.dead {
-        handle_player_log_and_instructions(&output.log, player, &error_prefix, &mut some_error);
+        add_player_site_log(player, &output.log)?;
+        write_player_site_instructions(player, &[])?;
         // TODO: home station
-        if let Err(err) = write_player_location(player, PlayerLocation::default()) {
-            some_error = true;
-            eprintln!("{} docking write_player_location {}", error_prefix, err);
-        }
+        write_player_location(player, PlayerLocation::default())?;
     }
 
     for (solarsystem, station, entity) in output.docking {
         if let Entity::Player((player, ship)) = entity {
-            handle_player_log_and_instructions(&output.log, player, &error_prefix, &mut some_error);
-            if let Err(err) = write_player_location(
+            add_player_site_log(player, &output.log)?;
+            write_player_site_instructions(player, &[])?;
+            write_player_location(
                 player,
                 PlayerLocation::Station(PlayerLocationStation {
                     solarsystem,
                     station,
                 }),
-            ) {
-                some_error = true;
-                eprintln!("{} docking write_player_location {}", error_prefix, err);
-            }
+            )?;
 
             let mut assets = read_station_assets(player, solarsystem, station);
             assets.ships.push(ship);
-            if let Err(err) = write_station_assets(player, solarsystem, station, &assets) {
-                some_error = true;
-                eprintln!("{} docking write_station_assets {}", error_prefix, err);
-            }
+            write_station_assets(player, solarsystem, station, &assets)?;
         }
     }
 
     for (solarsystem, site, entity) in output.warping_out {
         if let Entity::Player((player, _)) = entity {
-            handle_player_log_and_instructions(&output.log, player, &error_prefix, &mut some_error);
-            if let Err(err) = write_player_location(
+            add_player_site_log(player, &output.log)?;
+            write_player_site_instructions(player, &[])?;
+            write_player_location(
                 player,
                 PlayerLocation::Warp(PlayerLocationWarp {
                     solarsystem,
                     towards: site,
                 }),
-            ) {
-                some_error = true;
-                eprintln!("{} docking write_player_location {}", error_prefix, err);
-            }
+            )?;
         }
 
-        if let Err(err) = add_entity_warping(solarsystem, site, entity) {
-            some_error = true;
-            eprintln!("{} add_player_warping {}", error_prefix, err);
-        }
+        add_entity_warping(solarsystem, site, entity)?;
     }
 
     for entity in &output.remaining {
         if let Entity::Player((player, _)) = entity {
-            handle_player_log_and_instructions(
-                &output.log,
-                *player,
-                &error_prefix,
-                &mut some_error,
-            );
-            if let Err(err) = write_player_location(
+            add_player_site_log(*player, &output.log)?;
+            write_player_site_instructions(*player, &[])?;
+            write_player_location(
                 *player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
-            ) {
-                some_error = true;
-                eprintln!("{} docking write_player_location {}", error_prefix, err);
-            }
+            )?;
         }
     }
 
     if output.remaining.is_empty() {
-        println!(
-            "gameloop::site_round Remove empty site {} {:?}",
-            solarsystem, site
-        );
-        if let Err(err) = remove_site(solarsystem, site) {
-            some_error = true;
-            eprintln!("{} remove_site {}", error_prefix, err);
-        }
-    } else if let Err(err) = write_site_entities(solarsystem, site, &output.remaining) {
-        some_error = true;
-        eprintln!("{} write_site_entities {}", error_prefix, err);
-    }
-
-    if some_error {
-        Err(anyhow::anyhow!(
-            "{} some error while saving occured",
-            error_prefix
-        ))
+        remove_site(solarsystem, site)?;
     } else {
-        Ok(())
+        write_site_entities(solarsystem, site, &output.remaining)?;
     }
-}
 
-fn handle_player_log_and_instructions(
-    log: &[Log],
-    player: Player,
-    error_prefix: &str,
-    some_error: &mut bool,
-) {
-    if let Err(err) = add_player_site_log(player, log) {
-        *some_error = true;
-        eprintln!("{} add_player_site_log {:?} {}", error_prefix, player, err);
-    }
-    if let Err(err) = write_player_site_instructions(player, &[]) {
-        *some_error = true;
-        eprintln!(
-            "{} write_player_instructions {:?} {}",
-            error_prefix, player, err
-        );
-    }
+    Ok(())
 }

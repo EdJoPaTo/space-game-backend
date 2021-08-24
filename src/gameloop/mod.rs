@@ -29,7 +29,7 @@ async fn do_loop() -> ! {
 
 fn once(statics: &Statics) -> anyhow::Result<()> {
     let measure = Instant::now();
-    site_round::all(statics).map_err(|err| anyhow!("gameloop::site_round {}", err))?;
+    site_round::all(statics);
     let site_round_took = measure.elapsed();
 
     let measure = Instant::now();
