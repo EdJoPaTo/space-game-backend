@@ -23,11 +23,6 @@ serde_yaml = "0.8"
 tide = "0.16"
 ureq = "2"
 url = "2"
-#backtrace = "0.3"
-#chrono = "0.4"
-#itertools = "0.10"
-#notify = "4"
-#serde_with = "1"
 
 [dependencies.async-std]
 version = "1"
@@ -36,10 +31,6 @@ features = ["attributes"]
 [dependencies.serde]
 version = "1"
 features = ["derive"]
-
-#[dev-dependencies]
-#float_eq = "0.6"
-#tempfile = "3"
 
 [dependencies.space-game-typings]
 #path = "../space-game-typings"
