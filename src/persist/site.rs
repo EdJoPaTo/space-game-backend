@@ -12,7 +12,7 @@ use super::{delete, read, read_meh, write};
 
 fn filename_site_entities(solarsystem: Solarsystem, site: Site) -> String {
     format!(
-        "persist/site-entities/{}/{}.yaml",
+        "persist/sites/entities/{}/{}.yaml",
         solarsystem,
         site.to_string()
     )
