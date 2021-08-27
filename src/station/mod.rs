@@ -1,3 +1,4 @@
+use space_game_typings::fixed::item::Item;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::frontrw::station_instruction::StationInstruction;
@@ -81,9 +82,9 @@ fn do_instruction(
             let mut generals = read_player_generals(player);
 
             for ship in &mut assets.ships {
-                let ore = ship.cargo.ore;
+                let ore = ship.cargo.amount(Item::Ore);
                 generals.paperclips += u64::from(ore) * 500;
-                ship.cargo.ore = 0;
+                ship.cargo = ship.cargo.checked_sub(Item::Ore, ore).unwrap();
             }
 
             write_player_generals(player, &generals)?;
