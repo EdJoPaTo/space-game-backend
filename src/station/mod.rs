@@ -50,6 +50,7 @@ fn do_instruction(
             }
         }
         StationInstruction::Undock => {
+            // TODO: undocking shouldnt be instantanious. It should also be handled with the round logic
             let ship = if let Some(ship) = assets.ships.last() {
                 if let Err(err) = ship.fitting.is_valid(statics) {
                     return Err(anyhow::anyhow!(
