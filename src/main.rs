@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use std::time::Instant;
 
 use space_game_typings::fixed::Statics;
