@@ -1,12 +1,12 @@
 use rand::Rng;
-use space_game_typings::fixed::lifeless::Lifeless;
+use space_game_typings::fixed::item::Ore;
 use space_game_typings::fixed::module::targeted::Targeted;
 use space_game_typings::fixed::npc_faction::NpcFaction;
 use space_game_typings::fixed::shiplayout::ShipLayout;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::ship::{Fitting, Ship};
-use space_game_typings::site::{Entity, EntityLifeless, Site, SitesNearPlanet};
+use space_game_typings::site::{Entity, Site, SitesNearPlanet};
 
 use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
 
@@ -54,13 +54,13 @@ fn generate_asteroid_belts(
     for _ in existing.len()..4 {
         let planet = rng.gen_range(1..=planets);
         let site = Site::AsteroidField(generate_unique(&mut existing));
-        let mut entities = Vec::new();
-        for _ in 0..5 {
-            entities.push(Entity::Lifeless(EntityLifeless::new(
-                &statics.lifeless,
-                Lifeless::Asteroid,
-            )));
-        }
+        let entities = vec![
+            Entity::new_asteroid(Ore::Aromit, 25, 18),
+            Entity::new_asteroid(Ore::Aromit, 40, 25),
+            Entity::new_asteroid(Ore::Solmit, 15, 120),
+            Entity::new_asteroid(Ore::Tormit, 10, 12),
+            Entity::new_asteroid(Ore::Vesmit, 6, 4),
+        ];
         crate::persist::site::add_site(solarsystem, planet, site, &entities)?;
     }
 
