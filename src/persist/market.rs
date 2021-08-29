@@ -30,6 +30,9 @@ impl Market {
     }
 
     pub fn buy(&self, item: Item, order: Order) -> anyhow::Result<()> {
+        if !order.is_valid() {
+            return Err(anyhow::anyhow!("Order is invalid"));
+        }
         let mut market = self.read(item);
         market.buy.push(order);
         market.sort();
@@ -37,6 +40,9 @@ impl Market {
     }
 
     pub fn sell(&self, item: Item, order: Order) -> anyhow::Result<()> {
+        if !order.is_valid() {
+            return Err(anyhow::anyhow!("Order is invalid"));
+        }
         let mut market = self.read(item);
         market.buy.push(order);
         market.sort();

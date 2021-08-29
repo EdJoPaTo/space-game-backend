@@ -86,15 +86,13 @@ async fn do_instruction(
         }
         Instruction::Buy(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
-
             let generals = persist.player_generals().await;
             let mut general = generals.read(player);
-
             if let Some(remaining) = general.paperclips.checked_sub(order.total_paperclips()) {
                 general.paperclips = remaining;
                 let market = persist.market().await;
-                generals.write(player, &general)?;
                 market.buy(item, order)?;
+                generals.write(player, &general)?;
             }
         }
         Instruction::Sell(o) => {
