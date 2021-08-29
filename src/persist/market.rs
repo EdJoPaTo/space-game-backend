@@ -44,7 +44,7 @@ impl Market {
             return Err(anyhow::anyhow!("Order is invalid"));
         }
         let mut market = self.read(item);
-        market.buy.push(order);
+        market.sell.push(order);
         market.sort();
         self.write(item, &market)
     }
