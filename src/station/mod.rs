@@ -51,6 +51,11 @@ async fn do_instruction(
                 }
             }
         }
+        Instruction::ShipCargosToStation => {
+            for ship in &mut assets.ships {
+                assets.storage.append(&mut ship.cargo);
+            }
+        }
         Instruction::Undock => {
             // TODO: undocking shouldnt be instantanious. It should also be handled with the round logic
             let ship = if let Some(ship) = assets.ships.last() {
