@@ -7,6 +7,7 @@ use space_game_typings::fixed::Statics;
 
 use crate::persist::Persist;
 
+mod market;
 mod site_round;
 mod sites;
 
@@ -44,14 +45,9 @@ async fn once(statics: &Statics, persist: &Persist) -> anyhow::Result<()> {
 
     let market_took = {
         let measure = Instant::now();
-        let market = persist.market().await;
-        let trades = market
-            .trade()
+        market::all(statics, persist)
+            .await
             .map_err(|err| anyhow!("gameloop::market {}", err))?;
-        // TODO: notify about trades
-        if !trades.is_empty() {
-            println!("trades {} {:?}", trades.len(), trades);
-        }
         measure.elapsed()
     };
 
