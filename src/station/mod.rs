@@ -93,6 +93,8 @@ async fn do_instruction(
                 let market = persist.market().await;
                 market.buy(item, order)?;
                 generals.write(player, &general)?;
+            } else {
+                return Err(anyhow::anyhow!("not enough money for buy order"));
             }
         }
         Instruction::Sell(o) => {
@@ -101,6 +103,8 @@ async fn do_instruction(
                 let market = persist.market().await;
                 market.sell(item, order)?;
                 assets.storage = remaining;
+            } else {
+                return Err(anyhow::anyhow!("not enough items for sell order"));
             }
         }
     }
