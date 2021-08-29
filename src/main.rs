@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use space_game_typings::fixed::Statics;
@@ -14,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let app = {
         println!("load static data...");
         let measure = Instant::now();
-        let statics = Statics::default();
+        let statics = Arc::new(Statics::default());
         println!("  took {:?}", measure.elapsed());
 
         println!("persist ensure_statics...");
@@ -28,8 +29,11 @@ async fn main() -> anyhow::Result<()> {
         println!("  took {:?}", measure.elapsed());
 
         println!("init webserver...");
+        let app_state = webserver::State {
+            statics: statics.clone(),
+        };
         let measure = Instant::now();
-        let app = webserver::init();
+        let app = webserver::init(app_state);
         println!("  took {:?}", measure.elapsed());
 
         println!("start gameloop...");
