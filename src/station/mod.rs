@@ -1,22 +1,22 @@
-use space_game_typings::fixed::item::{Item, Ore};
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
-use space_game_typings::frontrw::station_instruction::StationInstruction;
 use space_game_typings::player::location::{PlayerLocation, PlayerLocationSite};
 use space_game_typings::player::Player;
 use space_game_typings::ship::Ship;
 use space_game_typings::site::{Entity, Site};
+use space_game_typings::station::instruction::Instruction;
 
 use crate::persist::player::{
-    read_player_generals, read_player_location, read_station_assets, write_player_generals,
-    write_player_location, write_station_assets,
+    read_player_location, read_station_assets, write_player_location, write_station_assets,
 };
 use crate::persist::site::{read_site_entities, write_site_entities};
+use crate::persist::Persist;
 
-pub fn do_instructions(
+pub async fn do_instructions(
     statics: &Statics,
+    persist: &Persist,
     player: Player,
-    instructions: &[StationInstruction],
+    instructions: &[Instruction],
 ) -> anyhow::Result<()> {
     let location = read_player_location(player);
     let solarsystem = location.solarsystem();
@@ -27,21 +27,22 @@ pub fn do_instructions(
         }
     };
     for instruction in instructions.iter().copied() {
-        do_instruction(statics, player, instruction, solarsystem, station)?;
+        do_instruction(statics, persist, player, instruction, solarsystem, station).await?;
     }
     Ok(())
 }
 
-fn do_instruction(
+async fn do_instruction(
     statics: &Statics,
+    persist: &Persist,
     player: Player,
-    instruction: StationInstruction,
+    instruction: Instruction,
     solarsystem: Solarsystem,
     station: u8,
 ) -> anyhow::Result<()> {
     let mut assets = read_station_assets(player, solarsystem, station);
     match instruction {
-        StationInstruction::Repair => {
+        Instruction::Repair => {
             for ship in &mut assets.ships {
                 let collateral = ship.fitting.maximum_collateral(statics);
                 if ship.collateral != collateral {
@@ -50,7 +51,7 @@ fn do_instruction(
                 }
             }
         }
-        StationInstruction::Undock => {
+        Instruction::Undock => {
             // TODO: undocking shouldnt be instantanious. It should also be handled with the round logic
             let ship = if let Some(ship) = assets.ships.last() {
                 if let Err(err) = ship.fitting.is_valid(statics) {
@@ -78,32 +79,15 @@ fn do_instruction(
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
         }
-        StationInstruction::SellOre => {
-            let mut generals = read_player_generals(player);
-
-            for ship in &mut assets.ships {
-                let ore_cargo = ship
-                    .cargo
-                    .to_vec()
-                    .iter()
-                    .filter_map(|(item, amount)| match item {
-                        Item::Ore(o) => Some((*o, *amount)),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                for (ore, amount) in ore_cargo {
-                    let value = match ore {
-                        Ore::Aromit => 300,
-                        Ore::Solmit => 400,
-                        Ore::Tormit => 500,
-                        Ore::Vesmit => 600,
-                    };
-                    generals.paperclips += u64::from(amount) * value;
-                    ship.cargo = ship.cargo.checked_sub(ore.into(), amount).unwrap();
-                }
-            }
-
-            write_player_generals(player, &generals)?;
+        Instruction::Buy(o) => {
+            let (item, order) = o.to_order(player, solarsystem, station);
+            let market = persist.market.lock_arc().await;
+            market.buy(item, order)?;
+        }
+        Instruction::Sell(o) => {
+            let (item, order) = o.to_order(player, solarsystem, station);
+            let market = persist.market.lock_arc().await;
+            market.sell(item, order)?;
         }
     }
     write_station_assets(player, solarsystem, station, &assets)?;

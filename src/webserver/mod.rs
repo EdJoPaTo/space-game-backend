@@ -3,11 +3,11 @@
 use std::sync::Arc;
 
 use space_game_typings::fixed::Statics;
-use space_game_typings::frontrw::station_instruction::StationInstruction;
 use space_game_typings::player::location::PlayerLocation;
 use space_game_typings::player::Player;
-use space_game_typings::site::instruction::Instruction;
+use space_game_typings::site::instruction::Instruction as SiteInstruction;
 use space_game_typings::site::Entity;
+use space_game_typings::station::instruction::Instruction as StationInstruction;
 use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
@@ -165,7 +165,7 @@ async fn get_site_instructions(req: Request<State>) -> tide::Result {
 
 async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
-    let instructions = req.body_json::<Vec<Instruction>>().await?;
+    let instructions = req.body_json::<Vec<SiteInstruction>>().await?;
     println!(
         "SiteInstructions for player {:?} ({}): {:?}",
         player,
@@ -210,7 +210,8 @@ async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
         instructions
     );
     let statics = &req.state().statics;
-    station::do_instructions(statics, player, &instructions)?;
+    let persist = &req.state().persist;
+    station::do_instructions(statics, persist, player, &instructions).await?;
     Ok(Response::builder(StatusCode::Ok).build())
 }
 
