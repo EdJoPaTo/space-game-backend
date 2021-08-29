@@ -73,7 +73,7 @@ pub fn init(state: State) -> tide::Server<State> {
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
 
-    app.at("market/:item").get(get_market);
+    app.at("/market/:item").get(get_market);
 
     app
 }
@@ -216,7 +216,7 @@ async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
 }
 
 async fn get_market(req: Request<State>) -> tide::Result {
-    let item = serde_json::from_str(req.param("item")?)?;
+    let item = req.param("item")?.parse()?;
     let market = req.state().persist.market.lock_arc().await;
     let body = market.get(item);
     tide_json_response(&body)
