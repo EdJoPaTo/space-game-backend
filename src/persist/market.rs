@@ -5,10 +5,7 @@ pub struct Market {}
 
 impl Market {
     fn filename(item: Item) -> String {
-        format!(
-            "persist/market/{}.yaml",
-            serde_json::to_string(&item).unwrap()
-        )
+        format!("persist/market/{}.yaml", item.to_string())
     }
 
     fn list(&self) -> Vec<Item> {
