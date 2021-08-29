@@ -7,6 +7,16 @@ use space_game_typings::site::Log;
 
 use super::{delete, list, read, write};
 
+pub struct Generals {}
+impl Generals {
+    pub fn read(&self, player: Player) -> General {
+        super::read(&filename_player_generals(player))
+    }
+    pub fn write(&self, player: Player, general: &General) -> Result<()> {
+        super::write(&filename_player_generals(player), general)
+    }
+}
+
 fn filename_station_assets(player: Player, solarsystem: Solarsystem, station: u8) -> String {
     format!(
         "persist/station-assets/{}/{}-{}.yaml",
@@ -41,13 +51,6 @@ pub fn write_station_assets(
         &filename_station_assets(player, solarsystem, station),
         assets,
     )
-}
-
-pub fn read_player_generals(player: Player) -> General {
-    read(&filename_player_generals(player))
-}
-pub fn write_player_generals(player: Player, generals: &General) -> Result<()> {
-    write(&filename_player_generals(player), generals)
 }
 
 pub fn read_player_location(player: Player) -> PlayerLocation {

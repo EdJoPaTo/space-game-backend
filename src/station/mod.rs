@@ -86,13 +86,24 @@ async fn do_instruction(
         }
         Instruction::Buy(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
-            let market = persist.market.lock_arc().await;
-            market.buy(item, order)?;
+
+            let generals = persist.player_generals().await;
+            let mut general = generals.read(player);
+
+            if let Some(remaining) = general.paperclips.checked_sub(order.total_paperclips()) {
+                general.paperclips = remaining;
+                let market = persist.market().await;
+                generals.write(player, &general)?;
+                market.buy(item, order)?;
+            }
         }
         Instruction::Sell(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
-            let market = persist.market.lock_arc().await;
-            market.sell(item, order)?;
+            if let Some(remaining) = assets.storage.checked_sub(item, order.amount) {
+                let market = persist.market().await;
+                market.sell(item, order)?;
+                assets.storage = remaining;
+            }
         }
     }
     write_station_assets(player, solarsystem, station, &assets)?;

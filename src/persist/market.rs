@@ -1,9 +1,6 @@
-#![allow(clippy::unused_self)]
-
 use space_game_typings::fixed::item::Item;
 use space_game_typings::market::{ItemMarket, Order, Trade};
 
-#[derive(Clone)]
 pub struct Market {}
 
 impl Market {

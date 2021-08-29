@@ -1,10 +1,10 @@
-#![allow(clippy::module_name_repetitions, dead_code)]
+#![allow(clippy::module_name_repetitions, dead_code, clippy::unused_self)]
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use async_std::sync::Mutex;
+use async_std::sync::{Mutex, MutexGuardArc};
 
 mod ensure_player_locations;
 mod market;
@@ -17,14 +17,25 @@ pub use site::ensure_static_sites;
 
 #[derive(Clone)]
 pub struct Persist {
-    pub market: Arc<Mutex<Market>>,
+    market: Arc<Mutex<Market>>,
+    player_generals: Arc<Mutex<player::Generals>>,
 }
 
 impl Default for Persist {
     fn default() -> Self {
         Self {
             market: Arc::new(Mutex::new(Market {})),
+            player_generals: Arc::new(Mutex::new(player::Generals {})),
         }
+    }
+}
+
+impl Persist {
+    pub async fn market(&self) -> MutexGuardArc<Market> {
+        self.market.lock_arc().await
+    }
+    pub async fn player_generals(&self) -> MutexGuardArc<player::Generals> {
+        self.player_generals.lock_arc().await
     }
 }
 

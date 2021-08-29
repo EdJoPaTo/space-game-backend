@@ -14,7 +14,7 @@ use tide::{Request, Response, StatusCode};
 
 use crate::persist::player::{
     add_player_site_instructions, list_players_with_site_log, pop_player_site_log,
-    read_player_generals, read_player_location, read_player_site_instructions, read_station_assets,
+    read_player_location, read_player_site_instructions, read_station_assets,
 };
 use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
 use crate::persist::Persist;
@@ -90,7 +90,7 @@ where
 
 async fn player_generals(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
-    let body = read_player_generals(player);
+    let body = req.state().persist.player_generals().await.read(player);
     tide_json_response(&body)
 }
 
@@ -217,7 +217,7 @@ async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
 
 async fn get_market(req: Request<State>) -> tide::Result {
     let item = req.param("item")?.parse()?;
-    let market = req.state().persist.market.lock_arc().await;
+    let market = req.state().persist.market().await;
     let body = market.get(item);
     tide_json_response(&body)
 }

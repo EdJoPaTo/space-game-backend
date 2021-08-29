@@ -44,7 +44,7 @@ async fn once(statics: &Statics, persist: &Persist) -> anyhow::Result<()> {
 
     let market_took = {
         let measure = Instant::now();
-        let market = persist.market.lock_arc().await;
+        let market = persist.market().await;
         let trades = market
             .trade()
             .map_err(|err| anyhow!("gameloop::market {}", err))?;
