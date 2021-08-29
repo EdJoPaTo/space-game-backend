@@ -1,25 +1,27 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
 use async_std::task::{sleep, spawn};
 use space_game_typings::fixed::Statics;
 
+use crate::persist::Persist;
+
 mod site_round;
 mod sites;
 
-pub fn start(statics: &Statics) -> anyhow::Result<()> {
-    once(statics)?;
+pub async fn start(statics: Arc<Statics>, persist: Persist) -> anyhow::Result<()> {
+    once(&statics, &persist).await?;
     spawn(async {
-        do_loop().await;
+        do_loop(statics, persist).await;
     });
     Ok(())
 }
 
-async fn do_loop() -> ! {
-    let statics = Statics::default();
+async fn do_loop(statics: Arc<Statics>, persist: Persist) -> ! {
     loop {
         sleep(Duration::from_secs(15)).await;
-        if let Err(err) = once(&statics) {
+        if let Err(err) = once(&statics, &persist).await {
             eprintln!("ERROR gameloop {}", err);
         }
     }
@@ -27,15 +29,35 @@ async fn do_loop() -> ! {
 
 // TODO: ensure players in warp warp to existing site
 
-fn once(statics: &Statics) -> anyhow::Result<()> {
-    let measure = Instant::now();
-    site_round::all(statics);
-    let site_round_took = measure.elapsed();
+async fn once(statics: &Statics, persist: &Persist) -> anyhow::Result<()> {
+    let site_round_took = {
+        let measure = Instant::now();
+        site_round::all(statics);
+        measure.elapsed()
+    };
 
-    let measure = Instant::now();
-    sites::all(statics).map_err(|err| anyhow!("gameloop::sites {}", err))?;
-    let sites_took = measure.elapsed();
+    let sites_took = {
+        let measure = Instant::now();
+        sites::all(statics).map_err(|err| anyhow!("gameloop::sites {}", err))?;
+        measure.elapsed()
+    };
 
-    println!("gameloop::once {:?} {:?}", site_round_took, sites_took);
+    let market_took = {
+        let measure = Instant::now();
+        let market = persist.market.lock_arc().await;
+        let trades = market
+            .trade()
+            .map_err(|err| anyhow!("gameloop::market {}", err))?;
+        // TODO: notify about trades
+        if !trades.is_empty() {
+            println!("trades {} {:?}", trades.len(), trades);
+        }
+        measure.elapsed()
+    };
+
+    println!(
+        "gameloop::once site_round:{:?} site:{:?} market:{:?}",
+        site_round_took, sites_took, market_took
+    );
     Ok(())
 }

@@ -1,14 +1,32 @@
-#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions, dead_code)]
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use async_std::sync::Mutex;
 
 mod ensure_player_locations;
+mod market;
 pub mod player;
 pub mod site;
 
 pub use ensure_player_locations::ensure_player_locations;
+pub use market::Market;
 pub use site::ensure_static_sites;
+
+#[derive(Clone)]
+pub struct Persist {
+    pub market: Arc<Mutex<Market>>,
+}
+
+impl Default for Persist {
+    fn default() -> Self {
+        Self {
+            market: Arc::new(Mutex::new(Market {})),
+        }
+    }
+}
 
 fn read<P: AsRef<Path>, T>(file: P) -> T
 where

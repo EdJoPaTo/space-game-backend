@@ -18,6 +18,11 @@ async fn main() -> anyhow::Result<()> {
         let statics = Arc::new(Statics::default());
         println!("  took {:?}", measure.elapsed());
 
+        println!("load persist data...");
+        let measure = Instant::now();
+        let persist = persist::Persist::default();
+        println!("  took {:?}", measure.elapsed());
+
         println!("persist ensure_statics...");
         let measure = Instant::now();
         persist::ensure_static_sites(&statics).unwrap();
@@ -31,6 +36,7 @@ async fn main() -> anyhow::Result<()> {
         println!("init webserver...");
         let app_state = webserver::State {
             statics: statics.clone(),
+            persist: persist.clone(),
         };
         let measure = Instant::now();
         let app = webserver::init(app_state);
@@ -38,7 +44,9 @@ async fn main() -> anyhow::Result<()> {
 
         println!("start gameloop...");
         let measure = Instant::now();
-        gameloop::start(&statics).expect("first gameloop iteration failed");
+        gameloop::start(statics, persist)
+            .await
+            .expect("first gameloop iteration failed");
         println!("  took {:?}", measure.elapsed());
 
         app

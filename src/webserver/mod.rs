@@ -1,3 +1,5 @@
+#![allow(clippy::unused_async)]
+
 use std::sync::Arc;
 
 use space_game_typings::fixed::Statics;
@@ -15,6 +17,7 @@ use crate::persist::player::{
     read_player_generals, read_player_location, read_player_site_instructions, read_station_assets,
 };
 use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
+use crate::persist::Persist;
 use crate::station;
 
 mod site_entity;
@@ -22,6 +25,7 @@ mod site_entity;
 #[derive(Clone)]
 pub struct State {
     pub statics: Arc<Statics>,
+    pub persist: Persist,
 }
 
 pub fn init(state: State) -> tide::Server<State> {
@@ -69,6 +73,8 @@ pub fn init(state: State) -> tide::Server<State> {
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
 
+    app.at("market/:item").get(get_market);
+
     app
 }
 
@@ -82,21 +88,18 @@ where
         .build())
 }
 
-#[allow(clippy::unused_async)]
 async fn player_generals(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let body = read_player_generals(player);
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn player_location(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let body = read_player_location(player);
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn player_ship(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let location = read_player_location(player);
@@ -132,7 +135,6 @@ async fn player_ship(req: Request<State>) -> tide::Result {
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn site_entities(req: Request<State>) -> tide::Result {
     let solarsystem = req.param("solarsystem")?.parse()?;
     let site = req.param("unique")?.parse()?;
@@ -140,7 +142,6 @@ async fn site_entities(req: Request<State>) -> tide::Result {
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn sites(req: Request<State>) -> tide::Result {
     let solarsystem = req.param("solarsystem")?.parse()?;
     let body =
@@ -148,7 +149,6 @@ async fn sites(req: Request<State>) -> tide::Result {
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn station_assets(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let solarsystem = req.param("solarsystem")?.parse()?;
@@ -157,14 +157,12 @@ async fn station_assets(req: Request<State>) -> tide::Result {
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn get_site_instructions(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let body = read_player_site_instructions(player);
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let instructions = req.body_json::<Vec<Instruction>>().await?;
@@ -178,14 +176,12 @@ async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
     Ok(Response::builder(StatusCode::Ok).build())
 }
 
-#[allow(clippy::unused_async)]
 async fn get_player_site_log(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let body = pop_player_site_log(player)?;
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn get_platform_site_log_players(req: Request<State>) -> tide::Result {
     let platform = req.param("platform")?;
     let site_log_players = list_players_with_site_log();
@@ -204,7 +200,6 @@ async fn get_platform_site_log_players(req: Request<State>) -> tide::Result {
     tide_json_response(&body)
 }
 
-#[allow(clippy::unused_async)]
 async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let instructions = req.body_json::<Vec<StationInstruction>>().await?;
@@ -217,4 +212,11 @@ async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
     let statics = &req.state().statics;
     station::do_instructions(statics, player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
+}
+
+async fn get_market(req: Request<State>) -> tide::Result {
+    let item = serde_json::from_str(req.param("item")?)?;
+    let market = req.state().persist.market.lock_arc().await;
+    let body = market.get(item);
+    tide_json_response(&body)
 }
