@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
 
         println!("load persist data...");
         let measure = Instant::now();
-        let persist = Arc::new(Mutex::new(persist::Persist::default()));
+        let mut persist = persist::Persist::default();
         println!("  took {:?}", measure.elapsed());
 
         println!("persist ensure_statics...");
@@ -31,8 +31,10 @@ async fn main() -> anyhow::Result<()> {
 
         println!("persist ensure_player_locations...");
         let measure = Instant::now();
-        persist::ensure_player_locations(&statics).unwrap();
+        persist::ensure_player_locations(&statics, &mut persist).unwrap();
         println!("  took {:?}", measure.elapsed());
+
+        let persist = Arc::new(Mutex::new(persist));
 
         println!("init webserver...");
         let app_state = webserver::State {

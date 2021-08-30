@@ -8,9 +8,7 @@ use space_game_typings::player::location::{
 use space_game_typings::site::instruction::Instruction;
 use space_game_typings::site::{advance, Entity, Log, Site};
 
-use crate::persist::player::{
-    read_player_site_instructions, write_player_location, write_player_site_instructions,
-};
+use crate::persist::player::{read_player_site_instructions, write_player_site_instructions};
 use crate::persist::site::{
     add_entity_warping, pop_entity_warping, read_site_entities, read_sites_everywhere, remove_site,
     write_site_entities,
@@ -82,7 +80,9 @@ fn handle(
             .add(player, output.log.clone())?;
         write_player_site_instructions(player, &[])?;
         // TODO: home station
-        write_player_location(player, PlayerLocation::default())?;
+        persist
+            .player_locations
+            .write(player, PlayerLocation::default())?;
     }
 
     for (solarsystem, station, entity) in output.docking {
@@ -91,7 +91,7 @@ fn handle(
                 .player_notifications
                 .add(player, output.log.clone())?;
             write_player_site_instructions(player, &[])?;
-            write_player_location(
+            persist.player_locations.write(
                 player,
                 PlayerLocation::Station(PlayerLocationStation {
                     solarsystem,
@@ -115,7 +115,7 @@ fn handle(
                 .player_notifications
                 .add(player, output.log.clone())?;
             write_player_site_instructions(player, &[])?;
-            write_player_location(
+            persist.player_locations.write(
                 player,
                 PlayerLocation::Warp(PlayerLocationWarp {
                     solarsystem,
@@ -133,7 +133,7 @@ fn handle(
                 .player_notifications
                 .add(*player, output.log.clone())?;
             write_player_site_instructions(*player, &[])?;
-            write_player_location(
+            persist.player_locations.write(
                 *player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;

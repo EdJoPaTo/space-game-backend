@@ -12,12 +12,14 @@ pub mod site;
 pub use ensure_player_locations::ensure_player_locations;
 pub use market::Market;
 pub use notifications::Notifications;
+pub use player::PlayerLocations;
 pub use player::{PlayerGenerals, PlayerStationAssets};
 pub use site::ensure_static_sites;
 
 pub struct Persist {
     pub market: Market,
     pub player_generals: PlayerGenerals,
+    pub player_locations: PlayerLocations,
     pub player_notifications: Notifications,
     pub player_station_assets: PlayerStationAssets,
 }
@@ -27,6 +29,7 @@ impl Default for Persist {
         Self {
             market: Market {},
             player_generals: PlayerGenerals {},
+            player_locations: PlayerLocations {},
             player_notifications: Notifications {},
             player_station_assets: PlayerStationAssets {},
         }

@@ -13,9 +13,7 @@ use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 
-use crate::persist::player::{
-    add_player_site_instructions, read_player_location, read_player_site_instructions,
-};
+use crate::persist::player::{add_player_site_instructions, read_player_site_instructions};
 use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
 use crate::persist::Persist;
 use crate::station;
@@ -116,13 +114,13 @@ async fn player_generals(req: Request<State>) -> tide::Result {
 
 async fn player_location(req: Request<State>) -> tide::Result {
     let player = tide_parse_param(&req, "player")?;
-    let body = read_player_location(player);
+    let body = req.state().persist().await.player_locations.read(player);
     tide_json_response(&body)
 }
 
 async fn player_ship(req: Request<State>) -> tide::Result {
     let player = tide_parse_param(&req, "player")?;
-    let location = read_player_location(player);
+    let location = req.state().persist().await.player_locations.read(player);
     let body = match location {
         PlayerLocation::Site(s) => {
             let entities = read_site_entities(s.solarsystem, s.site)?;

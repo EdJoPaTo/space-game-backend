@@ -35,6 +35,32 @@ impl PlayerStationAssets {
     }
 }
 
+pub struct PlayerLocations {}
+impl PlayerLocations {
+    pub fn read(&self, player: Player) -> PlayerLocation {
+        super::read(&filename_player_location(player))
+    }
+    pub fn write(&mut self, player: Player, location: PlayerLocation) -> Result<()> {
+        super::write(&filename_player_location(player), &location)
+    }
+    pub fn read_all_players(&self) -> Vec<Player> {
+        list("persist/player-location/")
+            .iter()
+            .filter_map(|o| o.file_stem())
+            .filter_map(std::ffi::OsStr::to_str)
+            .filter_map(|o| o.parse().ok())
+            .collect()
+    }
+    pub fn read_all(&self) -> Vec<(Player, PlayerLocation)> {
+        let mut result = Vec::new();
+        for player in self.read_all_players() {
+            let location = self.read(player);
+            result.push((player, location));
+        }
+        result
+    }
+}
+
 fn filename_station_assets(player: Player, solarsystem: Solarsystem, station: u8) -> String {
     format!(
         "persist/station-assets/{}/{}-{}.yaml",
@@ -54,27 +80,6 @@ fn filename_instructions(player: Player) -> String {
 }
 fn filename_site_log(player: Player) -> String {
     format!("persist/player-sitelog/{}.yaml", player.to_string())
-}
-
-pub fn read_player_location(player: Player) -> PlayerLocation {
-    read(&filename_player_location(player))
-}
-pub fn write_player_location(player: Player, location: PlayerLocation) -> Result<()> {
-    write(&filename_player_location(player), &location)
-}
-pub fn read_all_player_locations() -> Vec<(Player, PlayerLocation)> {
-    let list = list("persist/player-location/");
-    let list = list
-        .iter()
-        .filter_map(|o| o.file_stem())
-        .filter_map(std::ffi::OsStr::to_str)
-        .filter_map(|o| o.parse().ok());
-    let mut result = Vec::new();
-    for player in list {
-        let location = read_player_location(player);
-        result.push((player, location));
-    }
-    result
 }
 
 pub fn read_player_site_instructions(player: Player) -> Vec<Instruction> {

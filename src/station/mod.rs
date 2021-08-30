@@ -6,7 +6,6 @@ use space_game_typings::ship::Ship;
 use space_game_typings::site::{Entity, Site};
 use space_game_typings::station::instruction::Instruction;
 
-use crate::persist::player::{read_player_location, write_player_location};
 use crate::persist::site::{read_site_entities, write_site_entities};
 use crate::persist::Persist;
 
@@ -16,7 +15,7 @@ pub fn do_instructions(
     player: Player,
     instructions: &[Instruction],
 ) -> anyhow::Result<()> {
-    let location = read_player_location(player);
+    let location = persist.player_locations.read(player);
     let solarsystem = location.solarsystem();
     let station = match location {
         PlayerLocation::Station(s) => s.station,
@@ -79,7 +78,7 @@ fn do_instruction(
             entities.push(Entity::Player((player, ship)));
             write_site_entities(solarsystem, site, &entities)?;
 
-            write_player_location(
+            persist.player_locations.write(
                 player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
