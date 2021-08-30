@@ -7,23 +7,44 @@ use space_game_typings::market::{Order, Trader};
 
 use crate::persist::{Market, Persist};
 
-pub async fn all(statics: &Statics, persist: &Persist) -> anyhow::Result<()> {
-    let market = persist.market().await;
-    let trades = market.trade()?;
-    // TODO: notify about trades
-    if !trades.is_empty() {
-        println!("trades {} {:?}", trades.len(), trades);
+pub fn all(statics: &Statics, persist: &mut Persist) -> anyhow::Result<()> {
+    let assets = &mut persist.player_station_assets;
+    let generals = &mut persist.player_generals;
+    let market = &mut persist.market;
+    let notifications = &mut persist.player_notifications;
+
+    for (item, trade) in market.trade()? {
+        println!("trade happened {:?} {:?}", item, trade);
+
+        // Give player the goods
+        if let Trader::Player(player) = trade.buyer {
+            let mut current = assets.read(player, trade.solarsystem, trade.station);
+            current.storage = current.storage.saturating_add(item, trade.amount);
+            assets.write(player, trade.solarsystem, trade.station, &current)?;
+        }
+
+        if let Trader::Player(player) = trade.seller {
+            let mut current = generals.read(player);
+            current.paperclips = current.paperclips.saturating_add(trade.total_paperclips());
+            generals.write(player, &current)?;
+        }
+
+        // Notify about trade
+        if let Trader::Player(player) = trade.buyer {
+            notifications.add(player, (item, trade))?;
+        }
+        if let Trader::Player(player) = trade.seller {
+            notifications.add(player, (item, trade))?;
+        }
     }
 
-    // TODO: generate npc item orders
-
-    generate_ore_orders(statics, &market)?;
+    generate_ore_orders(statics, market)?;
 
     Ok(())
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn generate_ore_orders(statics: &Statics, market: &Market) -> anyhow::Result<()> {
+fn generate_ore_orders(statics: &Statics, market: &mut Market) -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
     let trader = Trader::Npc(NpcFaction::Guards);
 

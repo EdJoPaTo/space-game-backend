@@ -2,40 +2,34 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use async_std::sync::{Mutex, MutexGuardArc};
 
 mod ensure_player_locations;
 mod market;
+mod notifications;
 pub mod player;
 pub mod site;
 
 pub use ensure_player_locations::ensure_player_locations;
 pub use market::Market;
+pub use notifications::Notifications;
+pub use player::{PlayerGenerals, PlayerStationAssets};
 pub use site::ensure_static_sites;
 
-#[derive(Clone)]
 pub struct Persist {
-    market: Arc<Mutex<Market>>,
-    player_generals: Arc<Mutex<player::Generals>>,
+    pub market: Market,
+    pub player_generals: PlayerGenerals,
+    pub player_notifications: Notifications,
+    pub player_station_assets: PlayerStationAssets,
 }
 
 impl Default for Persist {
     fn default() -> Self {
         Self {
-            market: Arc::new(Mutex::new(Market {})),
-            player_generals: Arc::new(Mutex::new(player::Generals {})),
+            market: Market {},
+            player_generals: PlayerGenerals {},
+            player_notifications: Notifications {},
+            player_station_assets: PlayerStationAssets {},
         }
-    }
-}
-
-impl Persist {
-    pub async fn market(&self) -> MutexGuardArc<Market> {
-        self.market.lock_arc().await
-    }
-    pub async fn player_generals(&self) -> MutexGuardArc<player::Generals> {
-        self.player_generals.lock_arc().await
     }
 }
 

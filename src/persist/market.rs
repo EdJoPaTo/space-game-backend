@@ -13,7 +13,7 @@ impl Market {
         list.iter()
             .filter_map(|o| o.file_stem())
             .filter_map(std::ffi::OsStr::to_str)
-            .filter_map(|o| serde_json::from_str(o).ok())
+            .filter_map(|o| o.parse::<Item>().ok())
             .collect()
     }
 
@@ -21,7 +21,7 @@ impl Market {
         super::read(Self::filename(item))
     }
 
-    fn write(&self, item: Item, market: &ItemMarket) -> anyhow::Result<()> {
+    fn write(&mut self, item: Item, market: &ItemMarket) -> anyhow::Result<()> {
         super::write(Self::filename(item), market)
     }
 
@@ -29,7 +29,7 @@ impl Market {
         self.read(item)
     }
 
-    pub fn buy(&self, item: Item, order: Order) -> anyhow::Result<()> {
+    pub fn buy(&mut self, item: Item, order: Order) -> anyhow::Result<()> {
         if !order.is_valid() {
             return Err(anyhow::anyhow!("Order is invalid"));
         }
@@ -39,7 +39,7 @@ impl Market {
         self.write(item, &market)
     }
 
-    pub fn sell(&self, item: Item, order: Order) -> anyhow::Result<()> {
+    pub fn sell(&mut self, item: Item, order: Order) -> anyhow::Result<()> {
         if !order.is_valid() {
             return Err(anyhow::anyhow!("Order is invalid"));
         }
@@ -49,12 +49,14 @@ impl Market {
         self.write(item, &market)
     }
 
-    pub fn trade(&self) -> anyhow::Result<Vec<Trade>> {
+    pub fn trade(&mut self) -> anyhow::Result<Vec<(Item, Trade)>> {
         let items = self.list();
         let mut trades = Vec::new();
         for item in items {
             let mut market = self.read(item);
-            trades.append(&mut market.resolve());
+            for t in market.resolve() {
+                trades.push((item, t));
+            }
             self.write(item, &market)?;
         }
         Ok(trades)

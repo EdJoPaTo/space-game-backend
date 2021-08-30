@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use async_std::sync::{Mutex, MutexGuardArc};
 use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::PlayerLocation;
 use space_game_typings::player::Player;
@@ -13,8 +14,7 @@ use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 
 use crate::persist::player::{
-    add_player_site_instructions, list_players_with_site_log, pop_player_site_log,
-    read_player_location, read_player_site_instructions, read_station_assets,
+    add_player_site_instructions, read_player_location, read_player_site_instructions,
 };
 use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
 use crate::persist::Persist;
@@ -25,7 +25,13 @@ mod site_entity;
 #[derive(Clone)]
 pub struct State {
     pub statics: Arc<Statics>,
-    pub persist: Persist,
+    pub persist: Arc<Mutex<Persist>>,
+}
+
+impl State {
+    pub async fn persist(&self) -> MutexGuardArc<Persist> {
+        self.persist.lock_arc().await
+    }
 }
 
 pub fn init(state: State) -> tide::Server<State> {
@@ -63,12 +69,13 @@ pub fn init(state: State) -> tide::Server<State> {
     app.at("/player/:player/site-instructions")
         .get(get_site_instructions)
         .post(post_site_instructions);
-    app.at("/player/:player/site-log").get(get_player_site_log);
+    app.at("/player/:player/notifications")
+        .get(get_player_notifications);
     app.at("/player/:player/station-instructions")
         .post(post_station_instructions);
 
-    app.at("/platform/:platform/site-log-players")
-        .get(get_platform_site_log_players);
+    app.at("/platform/:platform/notification-players")
+        .get(get_platform_players_with_notifications);
 
     app.at("/sites/:solarsystem").get(sites);
     app.at("/sites/:solarsystem/:unique").get(site_entities);
@@ -90,7 +97,7 @@ where
 
 async fn player_generals(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
-    let body = req.state().persist.player_generals().await.read(player);
+    let body = req.state().persist().await.player_generals.read(player);
     tide_json_response(&body)
 }
 
@@ -115,7 +122,12 @@ async fn player_ship(req: Request<State>) -> tide::Result {
                 .expect("player has to be in the site of its location");
             ship.clone()
         }
-        PlayerLocation::Station(s) => read_station_assets(player, s.solarsystem, s.station)
+        PlayerLocation::Station(s) => req
+            .state()
+            .persist()
+            .await
+            .player_station_assets
+            .read(player, s.solarsystem, s.station)
             .ships
             .last()
             .cloned()
@@ -153,7 +165,12 @@ async fn station_assets(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
     let solarsystem = req.param("solarsystem")?.parse()?;
     let station = req.param("station")?.parse()?;
-    let body = read_station_assets(player, solarsystem, station);
+    let body = req
+        .state()
+        .persist()
+        .await
+        .player_station_assets
+        .read(player, solarsystem, station);
     tide_json_response(&body)
 }
 
@@ -176,15 +193,25 @@ async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
     Ok(Response::builder(StatusCode::Ok).build())
 }
 
-async fn get_player_site_log(req: Request<State>) -> tide::Result {
+async fn get_player_notifications(req: Request<State>) -> tide::Result {
     let player = req.param("player")?.parse()?;
-    let body = pop_player_site_log(player)?;
+    let body = req
+        .state()
+        .persist()
+        .await
+        .player_notifications
+        .pop(player)?;
     tide_json_response(&body)
 }
 
-async fn get_platform_site_log_players(req: Request<State>) -> tide::Result {
+async fn get_platform_players_with_notifications(req: Request<State>) -> tide::Result {
     let platform = req.param("platform")?;
-    let site_log_players = list_players_with_site_log();
+    let site_log_players = req
+        .state()
+        .persist()
+        .await
+        .player_notifications
+        .list_players();
     let body = match platform {
         "telegram" => site_log_players
             .iter()
@@ -210,14 +237,13 @@ async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
         instructions
     );
     let statics = &req.state().statics;
-    let persist = &req.state().persist;
-    station::do_instructions(statics, persist, player, &instructions).await?;
+    let persist = &mut req.state().persist().await;
+    station::do_instructions(statics, persist, player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
 }
 
 async fn get_market(req: Request<State>) -> tide::Result {
     let item = req.param("item")?.parse()?;
-    let market = req.state().persist.market().await;
-    let body = market.get(item);
+    let body = req.state().persist().await.market.get(item);
     tide_json_response(&body)
 }

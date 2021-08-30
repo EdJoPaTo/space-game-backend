@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use async_std::sync::Mutex;
 use space_game_typings::fixed::Statics;
 
 mod gameloop;
@@ -20,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
 
         println!("load persist data...");
         let measure = Instant::now();
-        let persist = persist::Persist::default();
+        let persist = Arc::new(Mutex::new(persist::Persist::default()));
         println!("  took {:?}", measure.elapsed());
 
         println!("persist ensure_statics...");

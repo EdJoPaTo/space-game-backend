@@ -9,18 +9,19 @@ use space_game_typings::site::instruction::Instruction;
 use space_game_typings::site::{advance, Entity, Log, Site};
 
 use crate::persist::player::{
-    add_player_site_log, read_player_site_instructions, read_station_assets, write_player_location,
-    write_player_site_instructions, write_station_assets,
+    read_player_site_instructions, write_player_location, write_player_site_instructions,
 };
 use crate::persist::site::{
     add_entity_warping, pop_entity_warping, read_site_entities, read_sites_everywhere, remove_site,
     write_site_entities,
 };
+use crate::persist::Persist;
+
 mod npc_instructions;
 
-pub fn all(statics: &Statics) {
+pub fn all(statics: &Statics, persist: &mut Persist) {
     for (solarsystem, site) in read_sites_everywhere(&statics.solarsystems) {
-        handle(statics, solarsystem, site).unwrap_or_else(|err| {
+        handle(statics, persist, solarsystem, site).unwrap_or_else(|err| {
             panic!(
                 "gameloop::site::handle {:?} {:?} {}",
                 solarsystem, site, err
@@ -30,7 +31,12 @@ pub fn all(statics: &Statics) {
 }
 
 #[allow(clippy::too_many_lines)]
-fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Result<()> {
+fn handle(
+    statics: &Statics,
+    persist: &mut Persist,
+    solarsystem: Solarsystem,
+    site: Site,
+) -> anyhow::Result<()> {
     let output = {
         let site_entities = read_site_entities(solarsystem, site).unwrap();
 
@@ -71,7 +77,9 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
     }
 
     for player in output.dead {
-        add_player_site_log(player, &output.log)?;
+        persist
+            .player_notifications
+            .add(player, output.log.clone())?;
         write_player_site_instructions(player, &[])?;
         // TODO: home station
         write_player_location(player, PlayerLocation::default())?;
@@ -79,7 +87,9 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
 
     for (solarsystem, station, entity) in output.docking {
         if let Entity::Player((player, ship)) = entity {
-            add_player_site_log(player, &output.log)?;
+            persist
+                .player_notifications
+                .add(player, output.log.clone())?;
             write_player_site_instructions(player, &[])?;
             write_player_location(
                 player,
@@ -89,15 +99,21 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
                 }),
             )?;
 
-            let mut assets = read_station_assets(player, solarsystem, station);
+            let mut assets = persist
+                .player_station_assets
+                .read(player, solarsystem, station);
             assets.ships.push(ship);
-            write_station_assets(player, solarsystem, station, &assets)?;
+            persist
+                .player_station_assets
+                .write(player, solarsystem, station, &assets)?;
         }
     }
 
     for (solarsystem, site, entity) in output.warping_out {
         if let Entity::Player((player, _)) = entity {
-            add_player_site_log(player, &output.log)?;
+            persist
+                .player_notifications
+                .add(player, output.log.clone())?;
             write_player_site_instructions(player, &[])?;
             write_player_location(
                 player,
@@ -113,7 +129,9 @@ fn handle(statics: &Statics, solarsystem: Solarsystem, site: Site) -> anyhow::Re
 
     for entity in &output.remaining {
         if let Entity::Player((player, _)) = entity {
-            add_player_site_log(*player, &output.log)?;
+            persist
+                .player_notifications
+                .add(*player, output.log.clone())?;
             write_player_site_instructions(*player, &[])?;
             write_player_location(
                 *player,

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
+use async_std::sync::Mutex;
 use async_std::task::{sleep, spawn};
 use space_game_typings::fixed::Statics;
 
@@ -11,18 +12,21 @@ mod market;
 mod site_round;
 mod sites;
 
-pub async fn start(statics: Arc<Statics>, persist: Persist) -> anyhow::Result<()> {
-    once(&statics, &persist).await?;
+pub async fn start(statics: Arc<Statics>, persist: Arc<Mutex<Persist>>) -> anyhow::Result<()> {
+    let mut persist_once = persist.lock_arc().await;
+    once(&statics, &mut persist_once)?;
+
     spawn(async {
         do_loop(statics, persist).await;
     });
     Ok(())
 }
 
-async fn do_loop(statics: Arc<Statics>, persist: Persist) -> ! {
+async fn do_loop(statics: Arc<Statics>, persist: Arc<Mutex<Persist>>) -> ! {
     loop {
         sleep(Duration::from_secs(15)).await;
-        if let Err(err) = once(&statics, &persist).await {
+        let mut persist = persist.lock_arc().await;
+        if let Err(err) = once(&statics, &mut persist) {
             eprintln!("ERROR gameloop {}", err);
         }
     }
@@ -30,10 +34,10 @@ async fn do_loop(statics: Arc<Statics>, persist: Persist) -> ! {
 
 // TODO: ensure players in warp warp to existing site
 
-async fn once(statics: &Statics, persist: &Persist) -> anyhow::Result<()> {
+fn once(statics: &Statics, persist: &mut Persist) -> anyhow::Result<()> {
     let site_round_took = {
         let measure = Instant::now();
-        site_round::all(statics);
+        site_round::all(statics, persist);
         measure.elapsed()
     };
 
@@ -45,9 +49,7 @@ async fn once(statics: &Statics, persist: &Persist) -> anyhow::Result<()> {
 
     let market_took = {
         let measure = Instant::now();
-        market::all(statics, persist)
-            .await
-            .map_err(|err| anyhow!("gameloop::market {}", err))?;
+        market::all(statics, persist).map_err(|err| anyhow!("gameloop::market {}", err))?;
         measure.elapsed()
     };
 

@@ -6,15 +6,13 @@ use space_game_typings::ship::Ship;
 use space_game_typings::site::{Entity, Site};
 use space_game_typings::station::instruction::Instruction;
 
-use crate::persist::player::{
-    read_player_location, read_station_assets, write_player_location, write_station_assets,
-};
+use crate::persist::player::{read_player_location, write_player_location};
 use crate::persist::site::{read_site_entities, write_site_entities};
 use crate::persist::Persist;
 
-pub async fn do_instructions(
+pub fn do_instructions(
     statics: &Statics,
-    persist: &Persist,
+    persist: &mut Persist,
     player: Player,
     instructions: &[Instruction],
 ) -> anyhow::Result<()> {
@@ -27,20 +25,22 @@ pub async fn do_instructions(
         }
     };
     for instruction in instructions.iter().copied() {
-        do_instruction(statics, persist, player, instruction, solarsystem, station).await?;
+        do_instruction(statics, persist, player, instruction, solarsystem, station)?;
     }
     Ok(())
 }
 
-async fn do_instruction(
+fn do_instruction(
     statics: &Statics,
-    persist: &Persist,
+    persist: &mut Persist,
     player: Player,
     instruction: Instruction,
     solarsystem: Solarsystem,
     station: u8,
 ) -> anyhow::Result<()> {
-    let mut assets = read_station_assets(player, solarsystem, station);
+    let mut assets = persist
+        .player_station_assets
+        .read(player, solarsystem, station);
     match instruction {
         Instruction::Repair => {
             for ship in &mut assets.ships {
@@ -86,13 +86,11 @@ async fn do_instruction(
         }
         Instruction::Buy(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
-            let generals = persist.player_generals().await;
-            let mut general = generals.read(player);
+            let mut general = persist.player_generals.read(player);
             if let Some(remaining) = general.paperclips.checked_sub(order.total_paperclips()) {
                 general.paperclips = remaining;
-                let market = persist.market().await;
-                market.buy(item, order)?;
-                generals.write(player, &general)?;
+                persist.market.buy(item, order)?;
+                persist.player_generals.write(player, &general)?;
             } else {
                 return Err(anyhow::anyhow!("not enough money for buy order"));
             }
@@ -100,14 +98,15 @@ async fn do_instruction(
         Instruction::Sell(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
             if let Some(remaining) = assets.storage.checked_sub(item, order.amount) {
-                let market = persist.market().await;
-                market.sell(item, order)?;
+                persist.market.sell(item, order)?;
                 assets.storage = remaining;
             } else {
                 return Err(anyhow::anyhow!("not enough items for sell order"));
             }
         }
     }
-    write_station_assets(player, solarsystem, station, &assets)?;
+    persist
+        .player_station_assets
+        .write(player, solarsystem, station, &assets)?;
     Ok(())
 }

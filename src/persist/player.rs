@@ -3,17 +3,35 @@ use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::player::location::PlayerLocation;
 use space_game_typings::player::{General, Player, StationAssets};
 use space_game_typings::site::instruction::{filter_possible, Instruction};
-use space_game_typings::site::Log;
 
-use super::{delete, list, read, write};
+use super::{list, read, write};
 
-pub struct Generals {}
-impl Generals {
+pub struct PlayerGenerals {}
+impl PlayerGenerals {
     pub fn read(&self, player: Player) -> General {
         super::read(&filename_player_generals(player))
     }
-    pub fn write(&self, player: Player, general: &General) -> Result<()> {
+    pub fn write(&mut self, player: Player, general: &General) -> Result<()> {
         super::write(&filename_player_generals(player), general)
+    }
+}
+
+pub struct PlayerStationAssets {}
+impl PlayerStationAssets {
+    pub fn read(&self, player: Player, solarsystem: Solarsystem, station: u8) -> StationAssets {
+        super::read(&filename_station_assets(player, solarsystem, station))
+    }
+    pub fn write(
+        &mut self,
+        player: Player,
+        solarsystem: Solarsystem,
+        station: u8,
+        assets: &StationAssets,
+    ) -> Result<()> {
+        super::write(
+            &filename_station_assets(player, solarsystem, station),
+            assets,
+        )
     }
 }
 
@@ -36,21 +54,6 @@ fn filename_instructions(player: Player) -> String {
 }
 fn filename_site_log(player: Player) -> String {
     format!("persist/player-sitelog/{}.yaml", player.to_string())
-}
-
-pub fn read_station_assets(player: Player, solarsystem: Solarsystem, station: u8) -> StationAssets {
-    read(&filename_station_assets(player, solarsystem, station))
-}
-pub fn write_station_assets(
-    player: Player,
-    solarsystem: Solarsystem,
-    station: u8,
-    assets: &StationAssets,
-) -> Result<()> {
-    write(
-        &filename_station_assets(player, solarsystem, station),
-        assets,
-    )
 }
 
 pub fn read_player_location(player: Player) -> PlayerLocation {
@@ -88,31 +91,4 @@ pub fn add_player_site_instructions(player: Player, instructions: &[Instruction]
         all.push(*additional);
     }
     write_player_site_instructions(player, &all)
-}
-
-fn read_player_site_log(player: Player) -> Vec<Log> {
-    read(&filename_site_log(player))
-}
-fn write_player_site_log(player: Player, site_log: &[Log]) -> Result<()> {
-    write(filename_site_log(player), &site_log)
-}
-pub fn add_player_site_log(player: Player, site_log: &[Log]) -> Result<()> {
-    let mut all = read_player_site_log(player);
-    for additional in site_log {
-        all.push(*additional);
-    }
-    write_player_site_log(player, &all)
-}
-pub fn pop_player_site_log(player: Player) -> Result<Vec<Log>> {
-    let log = read_player_site_log(player);
-    delete(&filename_site_log(player))?;
-    Ok(log)
-}
-pub fn list_players_with_site_log() -> Vec<Player> {
-    list("persist/player-sitelog/")
-        .iter()
-        .filter_map(|o| o.file_stem())
-        .filter_map(std::ffi::OsStr::to_str)
-        .filter_map(|o| o.parse().ok())
-        .collect()
 }
