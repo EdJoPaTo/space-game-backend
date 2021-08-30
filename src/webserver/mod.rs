@@ -95,20 +95,33 @@ where
         .build())
 }
 
+fn tide_parse_param<T>(req: &Request<State>, param: &str) -> tide::Result<T>
+where
+    T: std::str::FromStr,
+{
+    let p = req.param(param)?;
+    p.parse().map_err(|_| {
+        tide::Error::new(
+            StatusCode::NotFound,
+            anyhow::anyhow!("failed to parse {}", param),
+        )
+    })
+}
+
 async fn player_generals(req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let body = req.state().persist().await.player_generals.read(player);
     tide_json_response(&body)
 }
 
 async fn player_location(req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let body = read_player_location(player);
     tide_json_response(&body)
 }
 
 async fn player_ship(req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let location = read_player_location(player);
     let body = match location {
         PlayerLocation::Site(s) => {
@@ -148,23 +161,23 @@ async fn player_ship(req: Request<State>) -> tide::Result {
 }
 
 async fn site_entities(req: Request<State>) -> tide::Result {
-    let solarsystem = req.param("solarsystem")?.parse()?;
-    let site = req.param("unique")?.parse()?;
+    let solarsystem = tide_parse_param(&req, "solarsystem")?;
+    let site = tide_parse_param(&req, "unique")?;
     let body = site_entity::read(&req.state().statics, solarsystem, site);
     tide_json_response(&body)
 }
 
 async fn sites(req: Request<State>) -> tide::Result {
-    let solarsystem = req.param("solarsystem")?.parse()?;
+    let solarsystem = tide_parse_param(&req, "solarsystem")?;
     let body =
         read_sites(solarsystem).map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
     tide_json_response(&body)
 }
 
 async fn station_assets(req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
-    let solarsystem = req.param("solarsystem")?.parse()?;
-    let station = req.param("station")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
+    let solarsystem = tide_parse_param(&req, "solarsystem")?;
+    let station = tide_parse_param(&req, "station")?;
     let body = req
         .state()
         .persist()
@@ -175,13 +188,13 @@ async fn station_assets(req: Request<State>) -> tide::Result {
 }
 
 async fn get_site_instructions(req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let body = read_player_site_instructions(player);
     tide_json_response(&body)
 }
 
 async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let instructions = req.body_json::<Vec<SiteInstruction>>().await?;
     println!(
         "SiteInstructions for player {:?} ({}): {:?}",
@@ -194,7 +207,7 @@ async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
 }
 
 async fn get_player_notifications(req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let body = req
         .state()
         .persist()
@@ -218,7 +231,7 @@ async fn get_platform_players_with_notifications(req: Request<State>) -> tide::R
             .filter(|o| matches!(o, Player::Telegram(_))),
         _ => {
             return Err(tide::Error::from_str(
-                StatusCode::BadRequest,
+                StatusCode::NotFound,
                 "platform unknown",
             ));
         }
@@ -228,7 +241,7 @@ async fn get_platform_players_with_notifications(req: Request<State>) -> tide::R
 }
 
 async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
-    let player = req.param("player")?.parse()?;
+    let player = tide_parse_param(&req, "player")?;
     let instructions = req.body_json::<Vec<StationInstruction>>().await?;
     println!(
         "StationInstructions for player {:?} ({}): {:?}",
@@ -243,7 +256,7 @@ async fn post_station_instructions(mut req: Request<State>) -> tide::Result {
 }
 
 async fn get_market(req: Request<State>) -> tide::Result {
-    let item = req.param("item")?.parse()?;
+    let item = tide_parse_param(&req, "item")?;
     let body = req.state().persist().await.market.get(item);
     tide_json_response(&body)
 }
