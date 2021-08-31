@@ -2,6 +2,7 @@ use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::{PlayerLocation, PlayerLocationSite};
 use space_game_typings::player::Player;
+use space_game_typings::ship::Ship;
 use space_game_typings::site::{Entity, Site};
 use space_game_typings::station::instruction::Instruction;
 
@@ -40,6 +41,9 @@ fn do_instruction(
         .player_station_assets
         .read(player, solarsystem, station);
     match instruction {
+        Instruction::SwitchShip(index) => {
+            assets.switch_ship(index);
+        }
         Instruction::Repair => {
             if let Some(ship) = &mut assets.current_ship {
                 let collateral = ship.fitting.maximum_collateral(statics);
@@ -48,14 +52,6 @@ fn do_instruction(
                     ship.collateral = collateral;
                 }
             }
-        }
-        Instruction::ShipCargosToStation => {
-            for ship in &mut assets.ships {
-                assets.storage.append(&mut ship.cargo);
-            }
-        }
-        Instruction::SwitchShip(index) => {
-            assets.switch_ship(index);
         }
         Instruction::Undock => {
             // TODO: undocking shouldnt be instantanious. It should also be handled with the round logic
@@ -68,6 +64,22 @@ fn do_instruction(
                 player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
+        }
+        Instruction::LoadItemsIntoShip(i) => {
+            if assets.current_ship.is_none() {
+                assets.current_ship = Some(Ship::default());
+            }
+            let ship = assets.current_ship.as_mut().unwrap();
+            let free = ship.free_cargo(statics);
+            let amount = free.min(i.amount);
+            let amount = assets.storage.take_max(i.item, amount);
+            ship.cargo.saturating_add(i.item, amount);
+        }
+        Instruction::UnloadItemsFromShip(i) => {
+            if let Some(ship) = &mut assets.current_ship {
+                let amount = ship.cargo.take_max(i.item, i.amount);
+                assets.storage.saturating_add(i.item, amount);
+            }
         }
         Instruction::Buy(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
@@ -82,9 +94,8 @@ fn do_instruction(
         }
         Instruction::Sell(o) => {
             let (item, order) = o.to_order(player, solarsystem, station);
-            if let Some(remaining) = assets.storage.checked_sub(item, order.amount) {
+            if assets.storage.take_exact(item, order.amount) {
                 persist.market.sell(item, order)?;
-                assets.storage = remaining;
             } else {
                 return Err(anyhow::anyhow!("not enough items for sell order"));
             }

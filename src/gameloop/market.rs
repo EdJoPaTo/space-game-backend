@@ -19,7 +19,7 @@ pub fn all(statics: &Statics, persist: &mut Persist) -> anyhow::Result<()> {
         // Give player the goods
         if let Trader::Player(player) = trade.buyer {
             let mut current = assets.read(player, trade.solarsystem, trade.station);
-            current.storage = current.storage.saturating_add(item, trade.amount);
+            current.storage.saturating_add(item, trade.amount);
             assets.write(player, trade.solarsystem, trade.station, &current)?;
         }
 
