@@ -139,9 +139,7 @@ async fn player_ship(req: Request<State>) -> tide::Result {
             .await
             .player_station_assets
             .read(player, s.solarsystem, s.station)
-            .ships
-            .last()
-            .cloned()
+            .current_ship
             .unwrap_or_default(),
         PlayerLocation::Warp(w) => {
             let entities = read_entitiy_warping(w.solarsystem);

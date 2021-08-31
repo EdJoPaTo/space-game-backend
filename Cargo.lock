@@ -1412,7 +1412,7 @@ dependencies = [
 [[package]]
 name = "space-game-typings"
 version = "0.1.0"
-source = "git+https://github.com/EdJoPaTo/space-game-typings?branch=main#12db97e133c70bd952a42451b3a165786b167033"
+source = "git+https://github.com/EdJoPaTo/space-game-typings?branch=main#6787984f2e638350657352cbf2a971d438d943c6"
 dependencies = [
  "anyhow",
  "chrono",

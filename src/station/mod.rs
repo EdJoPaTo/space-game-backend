@@ -2,7 +2,6 @@ use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::{PlayerLocation, PlayerLocationSite};
 use space_game_typings::player::Player;
-use space_game_typings::ship::Ship;
 use space_game_typings::site::{Entity, Site};
 use space_game_typings::station::instruction::Instruction;
 
@@ -42,7 +41,7 @@ fn do_instruction(
         .read(player, solarsystem, station);
     match instruction {
         Instruction::Repair => {
-            for ship in &mut assets.ships {
+            if let Some(ship) = &mut assets.current_ship {
                 let collateral = ship.fitting.maximum_collateral(statics);
                 if ship.collateral != collateral {
                     eprintln!("repair player ship in station {:?}", player);
@@ -55,29 +54,16 @@ fn do_instruction(
                 assets.storage.append(&mut ship.cargo);
             }
         }
+        Instruction::SwitchShip(index) => {
+            assets.switch_ship(index);
+        }
         Instruction::Undock => {
             // TODO: undocking shouldnt be instantanious. It should also be handled with the round logic
-            let ship = if let Some(ship) = assets.ships.last() {
-                if let Err(err) = ship.fitting.is_valid(statics) {
-                    return Err(anyhow::anyhow!(
-                        "That ship wont fly {:?} {:?} {:?}",
-                        player,
-                        err,
-                        ship
-                    ));
-                }
-
-                assets.ships.pop().unwrap()
-            } else {
-                Ship::default()
-            };
-
+            let ship = assets.current_ship.take().unwrap_or_default();
             let site = Site::Station(station);
-
             let mut entities = read_site_entities(solarsystem, site)?;
             entities.push(Entity::Player((player, ship)));
             write_site_entities(solarsystem, site, &entities)?;
-
             persist.player_locations.write(
                 player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),

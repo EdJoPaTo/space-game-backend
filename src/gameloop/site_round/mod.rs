@@ -102,7 +102,7 @@ fn handle(
             let mut assets = persist
                 .player_station_assets
                 .read(player, solarsystem, station);
-            assets.ships.push(ship);
+            assets.current_ship = Some(ship);
             persist
                 .player_station_assets
                 .write(player, solarsystem, station, &assets)?;
