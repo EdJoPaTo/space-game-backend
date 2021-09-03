@@ -1,3 +1,4 @@
+use space_game_typings::fixed::item::Item;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::{PlayerLocation, PlayerLocationSite};
@@ -5,6 +6,7 @@ use space_game_typings::player::Player;
 use space_game_typings::ship::Ship;
 use space_game_typings::site::{Entity, Site};
 use space_game_typings::station::instruction::Instruction;
+use space_game_typings::storage::Storage;
 
 use crate::persist::site::{read_site_entities, write_site_entities};
 use crate::persist::Persist;
@@ -100,9 +102,46 @@ fn do_instruction(
                 return Err(anyhow::anyhow!("not enough items for sell order"));
             }
         }
+        Instruction::Recycle { item, amount } => {
+            recycle(statics, &mut assets.storage, item, amount);
+        }
     }
     persist
         .player_station_assets
         .write(player, solarsystem, station, &assets)?;
     Ok(())
+}
+
+fn recycle<I: Into<Item>>(statics: &Statics, storage: &mut Storage, item: I, amount: u32) {
+    let item = item.into();
+    let amount = storage.take_max(item, amount);
+    for (mineral, i) in &statics.items.get(&item).recycle {
+        storage.saturating_add(*mineral, amount.saturating_mul(*i));
+    }
+}
+
+#[test]
+fn recycle_nothing() {
+    use space_game_typings::fixed::module::passive::Passive;
+    let statics = Statics::default();
+    let mut storage = Storage::new_empty();
+    let expected = Storage::new_empty();
+    recycle(
+        &statics,
+        &mut storage,
+        Item::ModulePassive(Passive::RookieArmorPlate),
+        2,
+    );
+    assert_eq!(storage.to_vec(), expected.to_vec());
+}
+
+#[test]
+fn recycle_something() {
+    use space_game_typings::fixed::item::Mineral;
+    use space_game_typings::fixed::module::passive::Passive;
+    let statics = Statics::default();
+    let mut storage = Storage::new_single(Passive::RookieArmorPlate, 2);
+    let expected = Storage::new_single(Mineral::Derite, 2);
+    recycle(&statics, &mut storage, Passive::RookieArmorPlate, 2);
+    assert_eq!(storage.to_vec(), expected.to_vec());
 }
