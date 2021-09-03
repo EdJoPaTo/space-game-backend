@@ -1,4 +1,5 @@
 use space_game_typings::fixed::item::Item;
+use space_game_typings::fixed::module::Module;
 use space_game_typings::fixed::solarsystem::Solarsystem;
 use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::{PlayerLocation, PlayerLocationSite};
@@ -31,6 +32,7 @@ pub fn do_instructions(
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 fn do_instruction(
     statics: &Statics,
     persist: &mut Persist,
@@ -66,6 +68,33 @@ fn do_instruction(
                 player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
+        }
+        Instruction::ModuleAdd(module) => {
+            let mut ship = assets.current_ship.clone().unwrap_or_default();
+            match module {
+                Module::Passive(m) => ship.fitting.slots_passive.push(m),
+                Module::Targeted(m) => ship.fitting.slots_targeted.push(m),
+                Module::Untargeted(m) => ship.fitting.slots_untargeted.push(m),
+            }
+            ship.fitting.is_valid(statics)?;
+            if assets.storage.take_exact(module, 1) {
+                assets.current_ship = Some(ship);
+            }
+        }
+        Instruction::ModulePassiveRemove(index) => {
+            let mut ship = assets.current_ship.unwrap_or_default();
+            ship_module_remove(&mut assets.storage, &mut ship.fitting.slots_passive, index);
+            assets.current_ship = Some(ship);
+        }
+        Instruction::ModuleTargetedRemove(index) => {
+            let mut ship = assets.current_ship.unwrap_or_default();
+            ship_module_remove(&mut assets.storage, &mut ship.fitting.slots_targeted, index);
+            assets.current_ship = Some(ship);
+        }
+        Instruction::ModuleUntargetedRemove(i) => {
+            let mut ship = assets.current_ship.unwrap_or_default();
+            ship_module_remove(&mut assets.storage, &mut ship.fitting.slots_untargeted, i);
+            assets.current_ship = Some(ship);
         }
         Instruction::ShipCargoLoad(i) => {
             if assets.current_ship.is_none() {
@@ -106,10 +135,24 @@ fn do_instruction(
             recycle(statics, &mut assets.storage, item, amount);
         }
     }
+    // Ensure the ship collateral is within the limits of the ship
+    if let Some(ship) = &mut assets.current_ship {
+        ship.collateral = ship
+            .collateral
+            .min(ship.fitting.maximum_collateral(statics));
+    }
     persist
         .player_station_assets
         .write(player, solarsystem, station, &assets)?;
     Ok(())
+}
+
+fn ship_module_remove<T: Into<Item>>(storage: &mut Storage, slots: &mut Vec<T>, index: u8) {
+    let index = index as usize;
+    if index < slots.len() {
+        let removed = slots.remove(index);
+        storage.saturating_add(removed, 1);
+    }
 }
 
 fn recycle<I: Into<Item>>(statics: &Statics, storage: &mut Storage, item: I, amount: u32) {
