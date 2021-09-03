@@ -1,6 +1,6 @@
 use anyhow::Result;
 use space_game_typings::fixed::facility::Facility;
-use space_game_typings::fixed::module::targeted::Targeted;
+use space_game_typings::fixed::module::Targeted;
 use space_game_typings::fixed::npc_faction::NpcFaction;
 use space_game_typings::fixed::shiplayout::ShipLayout;
 use space_game_typings::fixed::solarsystem::Solarsystem;

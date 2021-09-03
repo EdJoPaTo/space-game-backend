@@ -67,7 +67,7 @@ fn do_instruction(
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),
             )?;
         }
-        Instruction::LoadItemsIntoShip(i) => {
+        Instruction::ShipCargoLoad(i) => {
             if assets.current_ship.is_none() {
                 assets.current_ship = Some(Ship::default());
             }
@@ -77,7 +77,7 @@ fn do_instruction(
             let amount = assets.storage.take_max(i.item, amount);
             ship.cargo.saturating_add(i.item, amount);
         }
-        Instruction::UnloadItemsFromShip(i) => {
+        Instruction::ShipCargoUnload(i) => {
             if let Some(ship) = &mut assets.current_ship {
                 let amount = ship.cargo.take_max(i.item, i.amount);
                 assets.storage.saturating_add(i.item, amount);
@@ -122,23 +122,18 @@ fn recycle<I: Into<Item>>(statics: &Statics, storage: &mut Storage, item: I, amo
 
 #[test]
 fn recycle_nothing() {
-    use space_game_typings::fixed::module::passive::Passive;
+    use space_game_typings::fixed::module::Passive;
     let statics = Statics::default();
     let mut storage = Storage::new_empty();
     let expected = Storage::new_empty();
-    recycle(
-        &statics,
-        &mut storage,
-        Item::ModulePassive(Passive::RookieArmorPlate),
-        2,
-    );
+    recycle(&statics, &mut storage, Passive::RookieArmorPlate, 2);
     assert_eq!(storage.to_vec(), expected.to_vec());
 }
 
 #[test]
 fn recycle_something() {
     use space_game_typings::fixed::item::Mineral;
-    use space_game_typings::fixed::module::passive::Passive;
+    use space_game_typings::fixed::module::Passive;
     let statics = Statics::default();
     let mut storage = Storage::new_single(Passive::RookieArmorPlate, 2);
     let expected = Storage::new_single(Mineral::Derite, 2);
