@@ -13,7 +13,6 @@ use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 
-use crate::persist::player::{add_player_site_instructions, read_player_site_instructions};
 use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
 use crate::persist::Persist;
 use crate::station;
@@ -185,7 +184,12 @@ async fn station_assets(req: Request<State>) -> tide::Result {
 
 async fn get_site_instructions(req: Request<State>) -> tide::Result {
     let player = tide_parse_param(&req, "player")?;
-    let body = read_player_site_instructions(player);
+    let body = req
+        .state()
+        .persist()
+        .await
+        .player_site_instructions
+        .read(player);
     tide_json_response(&body)
 }
 
@@ -198,7 +202,11 @@ async fn post_site_instructions(mut req: Request<State>) -> tide::Result {
         instructions.len(),
         instructions
     );
-    add_player_site_instructions(player, &instructions)?;
+    req.state()
+        .persist()
+        .await
+        .player_site_instructions
+        .add(player, &instructions)?;
     Ok(Response::builder(StatusCode::Ok).build())
 }
 

@@ -61,6 +61,25 @@ impl PlayerLocations {
     }
 }
 
+pub struct PlayerSiteInstructions {}
+impl PlayerSiteInstructions {
+    pub fn read(&self, player: Player) -> Vec<Instruction> {
+        let all: Vec<Instruction> = read(&filename_instructions(player));
+        filter_possible(&all)
+    }
+    pub fn write(&mut self, player: Player, instructions: &[Instruction]) -> Result<()> {
+        let possible = filter_possible(instructions);
+        write(&filename_instructions(player), &possible)
+    }
+    pub fn add(&mut self, player: Player, instructions: &[Instruction]) -> Result<()> {
+        let mut all = self.read(player);
+        for additional in instructions {
+            all.push(*additional);
+        }
+        self.write(player, &all)
+    }
+}
+
 fn filename_station_assets(player: Player, solarsystem: Solarsystem, station: u8) -> String {
     format!(
         "persist/station-assets/{}/{}-{}.yaml",
@@ -80,20 +99,4 @@ fn filename_instructions(player: Player) -> String {
 }
 fn filename_site_log(player: Player) -> String {
     format!("persist/player-sitelog/{}.yaml", player.to_string())
-}
-
-pub fn read_player_site_instructions(player: Player) -> Vec<Instruction> {
-    let all: Vec<Instruction> = read(&filename_instructions(player));
-    filter_possible(&all)
-}
-pub fn write_player_site_instructions(player: Player, instructions: &[Instruction]) -> Result<()> {
-    let possible = filter_possible(instructions);
-    write(&filename_instructions(player), &possible)
-}
-pub fn add_player_site_instructions(player: Player, instructions: &[Instruction]) -> Result<()> {
-    let mut all = read_player_site_instructions(player);
-    for additional in instructions {
-        all.push(*additional);
-    }
-    write_player_site_instructions(player, &all)
 }

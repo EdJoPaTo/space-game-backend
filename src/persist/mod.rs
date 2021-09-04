@@ -6,21 +6,23 @@ use std::path::{Path, PathBuf};
 mod ensure_player_locations;
 mod market;
 mod notifications;
-pub mod player;
+mod player;
 pub mod site;
 
-pub use ensure_player_locations::ensure_player_locations;
-pub use market::Market;
-pub use notifications::Notifications;
-pub use player::PlayerLocations;
-pub use player::{PlayerGenerals, PlayerStationAssets};
-pub use site::ensure_static_sites;
+pub use self::ensure_player_locations::ensure_player_locations;
+pub use self::market::Market;
+pub use self::notifications::Notifications;
+pub use self::player::PlayerLocations;
+pub use self::player::PlayerSiteInstructions;
+pub use self::player::{PlayerGenerals, PlayerStationAssets};
+pub use self::site::ensure_static_sites;
 
 pub struct Persist {
     pub market: Market,
     pub player_generals: PlayerGenerals,
     pub player_locations: PlayerLocations,
     pub player_notifications: Notifications,
+    pub player_site_instructions: PlayerSiteInstructions,
     pub player_station_assets: PlayerStationAssets,
 }
 
@@ -31,6 +33,7 @@ impl Default for Persist {
             player_generals: PlayerGenerals {},
             player_locations: PlayerLocations {},
             player_notifications: Notifications {},
+            player_site_instructions: PlayerSiteInstructions {},
             player_station_assets: PlayerStationAssets {},
         }
     }
