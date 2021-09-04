@@ -9,7 +9,6 @@ use space_game_typings::site::{Entity, Site};
 use space_game_typings::station::instruction::Instruction;
 use space_game_typings::storage::Storage;
 
-use crate::persist::site::{read_site_entities, write_site_entities};
 use crate::persist::Persist;
 
 pub fn do_instructions(
@@ -61,9 +60,9 @@ fn do_instruction(
             // TODO: undocking shouldnt be instantanious. It should also be handled with the round logic
             let ship = assets.current_ship.take().unwrap_or_default();
             let site = Site::Station(station);
-            let mut entities = read_site_entities(solarsystem, site)?;
+            let mut entities = persist.sites.read_entities(solarsystem, site)?;
             entities.push(Entity::Player((player, ship)));
-            write_site_entities(solarsystem, site, &entities)?;
+            persist.sites.write_entities(solarsystem, site, &entities)?;
             persist.player_locations.write(
                 player,
                 PlayerLocation::Site(PlayerLocationSite { solarsystem, site }),

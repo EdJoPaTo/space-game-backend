@@ -8,16 +8,13 @@ use space_game_typings::player::location::{
 use space_game_typings::site::instruction::Instruction;
 use space_game_typings::site::{advance, Entity, Log, Site};
 
-use crate::persist::site::{
-    add_entity_warping, pop_entity_warping, read_site_entities, read_sites_everywhere, remove_site,
-    write_site_entities,
-};
+use crate::persist::site::{add_entity_warping, pop_entity_warping};
 use crate::persist::Persist;
 
 mod npc_instructions;
 
 pub fn all(statics: &Statics, persist: &mut Persist) {
-    for (solarsystem, site) in read_sites_everywhere(&statics.solarsystems) {
+    for (solarsystem, site) in persist.sites.read_sites_everywhere(&statics.solarsystems) {
         handle(statics, persist, solarsystem, site).unwrap_or_else(|err| {
             panic!(
                 "gameloop::site::handle {:?} {:?} {}",
@@ -35,7 +32,7 @@ fn handle(
     site: Site,
 ) -> anyhow::Result<()> {
     let output = {
-        let site_entities = read_site_entities(solarsystem, site).unwrap();
+        let site_entities = persist.sites.read_entities(solarsystem, site).unwrap();
 
         let mut instructions: HashMap<usize, Vec<Instruction>> = HashMap::new();
 
@@ -140,9 +137,11 @@ fn handle(
     }
 
     if output.remaining.is_empty() {
-        remove_site(solarsystem, site)?;
+        persist.sites.remove_site(solarsystem, site)?;
     } else {
-        write_site_entities(solarsystem, site, &output.remaining)?;
+        persist
+            .sites
+            .write_entities(solarsystem, site, &output.remaining)?;
     }
 
     Ok(())

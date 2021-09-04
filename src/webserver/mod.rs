@@ -13,7 +13,7 @@ use tide::http::mime;
 use tide::utils::After;
 use tide::{Request, Response, StatusCode};
 
-use crate::persist::site::{read_entitiy_warping, read_site_entities, read_sites};
+use crate::persist::site::read_entitiy_warping;
 use crate::persist::Persist;
 use crate::station;
 
@@ -122,7 +122,12 @@ async fn player_ship(req: Request<State>) -> tide::Result {
     let location = req.state().persist().await.player_locations.read(player);
     let body = match location {
         PlayerLocation::Site(s) => {
-            let entities = read_site_entities(s.solarsystem, s.site)?;
+            let entities = req
+                .state()
+                .persist()
+                .await
+                .sites
+                .read_entities(s.solarsystem, s.site)?;
             let ship = entities
                 .iter()
                 .find_map(|e| match e {
@@ -158,14 +163,20 @@ async fn player_ship(req: Request<State>) -> tide::Result {
 async fn site_entities(req: Request<State>) -> tide::Result {
     let solarsystem = tide_parse_param(&req, "solarsystem")?;
     let site = tide_parse_param(&req, "unique")?;
-    let body = site_entity::read(&req.state().statics, solarsystem, site);
+    let persist = req.state().persist().await;
+    let body = site_entity::read(&req.state().statics, &persist, solarsystem, site);
     tide_json_response(&body)
 }
 
 async fn sites(req: Request<State>) -> tide::Result {
     let solarsystem = tide_parse_param(&req, "solarsystem")?;
-    let body =
-        read_sites(solarsystem).map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
+    let body = req
+        .state()
+        .persist()
+        .await
+        .sites
+        .read_sites(solarsystem)
+        .map_err(|err| tide::Error::new(StatusCode::BadRequest, err))?;
     tide_json_response(&body)
 }
 

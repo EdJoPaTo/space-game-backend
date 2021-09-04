@@ -16,6 +16,7 @@ pub use self::player::PlayerLocations;
 pub use self::player::PlayerSiteInstructions;
 pub use self::player::{PlayerGenerals, PlayerStationAssets};
 pub use self::site::ensure_static_sites;
+pub use self::site::Sites;
 
 pub struct Persist {
     pub market: Market,
@@ -24,6 +25,7 @@ pub struct Persist {
     pub player_notifications: Notifications,
     pub player_site_instructions: PlayerSiteInstructions,
     pub player_station_assets: PlayerStationAssets,
+    pub sites: Sites,
 }
 
 impl Default for Persist {
@@ -35,6 +37,7 @@ impl Default for Persist {
             player_notifications: Notifications {},
             player_site_instructions: PlayerSiteInstructions {},
             player_station_assets: PlayerStationAssets {},
+            sites: Sites {},
         }
     }
 }

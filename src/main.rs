@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
 
         println!("persist ensure_statics...");
         let measure = Instant::now();
-        persist::ensure_static_sites(&statics).unwrap();
+        persist::ensure_static_sites(&statics, &mut persist.sites).unwrap();
         println!("  took {:?}", measure.elapsed());
 
         println!("persist ensure_player_locations...");

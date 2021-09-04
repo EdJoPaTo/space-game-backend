@@ -2,15 +2,13 @@ use space_game_typings::fixed::Statics;
 use space_game_typings::player::location::{PlayerLocation, PlayerLocationWarp};
 use space_game_typings::site::{Entity, Site};
 
-use crate::persist::site::{read_site_entities, read_sites_everywhere};
-
 use super::Persist;
 
 /// Ensure the `PlayerLocation` exists.
 /// Ensure the site the player is in knows its in.
 /// Also every strange finding will be printed to stderr.
 pub fn ensure_player_locations(statics: &Statics, persist: &mut Persist) -> anyhow::Result<()> {
-    let all_sites = read_sites_everywhere(&statics.solarsystems);
+    let all_sites = persist.sites.read_sites_everywhere(&statics.solarsystems);
     let player_locations = persist.player_locations.read_all();
 
     for (player, location) in player_locations {
@@ -27,7 +25,9 @@ pub fn ensure_player_locations(statics: &Statics, persist: &mut Persist) -> anyh
                     .iter()
                     .find(|o| o.0 == pls.solarsystem && o.1 == pls.site);
                 if let Some((solarsystem, site)) = site {
-                    let entities = read_site_entities(*solarsystem, *site)
+                    let entities = persist
+                        .sites
+                        .read_entities(*solarsystem, *site)
                         .expect("site exists so its entities should too");
                     let site_knows = entities
                         .iter()

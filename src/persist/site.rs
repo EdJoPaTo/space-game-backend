@@ -10,6 +10,66 @@ use space_game_typings::site::{Entity, Site, SitesNearPlanet};
 
 use super::{delete, read, read_meh, write};
 
+pub struct Sites {}
+impl Sites {
+    pub fn read_sites(&self, solarsystem: Solarsystem) -> Result<SitesNearPlanet> {
+        read_meh(&filename_sites(solarsystem))
+    }
+    fn write_sites(&mut self, solarsystem: Solarsystem, sites: &SitesNearPlanet) -> Result<()> {
+        write(&filename_sites(solarsystem), sites)
+    }
+    pub fn read_entities(&self, solarsystem: Solarsystem, site: Site) -> Result<Vec<Entity>> {
+        read_meh(&filename_site_entities(solarsystem, site))
+    }
+    pub fn write_entities(
+        &mut self,
+        solarsystem: Solarsystem,
+        site: Site,
+        entities: &[Entity],
+    ) -> Result<()> {
+        if entities.is_empty() {
+            return Err(anyhow::anyhow!(
+                "dont write empty site entities. remove_site instead {} {:?}",
+                solarsystem,
+                site
+            ));
+        }
+        write(&filename_site_entities(solarsystem, site), &entities)
+    }
+    pub fn read_sites_everywhere(&self, solarsystems: &Solarsystems) -> Vec<(Solarsystem, Site)> {
+        let mut result = Vec::new();
+        for solarsystem in solarsystems.data.keys().copied() {
+            let sites = self
+                .read_sites(solarsystem)
+                .expect("init at least created gate sites");
+            for site in sites.all() {
+                result.push((solarsystem, site));
+            }
+        }
+        result
+    }
+    pub fn add_site(
+        &mut self,
+        solarsystem: Solarsystem,
+        planet: u8,
+        site: Site,
+        entities: &[Entity],
+    ) -> Result<()> {
+        self.write_entities(solarsystem, site, entities)?;
+
+        let mut sites = self.read_sites(solarsystem)?;
+        sites.add(planet, site);
+        self.write_sites(solarsystem, &sites)
+    }
+    pub fn remove_site(&mut self, solarsystem: Solarsystem, site: Site) -> Result<()> {
+        let mut sites = self.read_sites(solarsystem)?;
+        sites.remove(site);
+        self.write_sites(solarsystem, &sites)?;
+        delete(&filename_site_entities(solarsystem, site))?;
+        Ok(())
+    }
+}
+
 fn filename_site_entities(solarsystem: Solarsystem, site: Site) -> String {
     format!(
         "persist/sites/entities/{}/{}.yaml",
@@ -46,73 +106,15 @@ pub fn add_entity_warping(solarsystem: Solarsystem, target: Site, entity: Entity
     write(&filename_warping(solarsystem), &current)
 }
 
-pub fn read_site_entities(solarsystem: Solarsystem, site: Site) -> Result<Vec<Entity>> {
-    read_meh(&filename_site_entities(solarsystem, site))
-}
-
-pub fn read_sites(solarsystem: Solarsystem) -> Result<SitesNearPlanet> {
-    read_meh(&filename_sites(solarsystem))
-}
-pub fn read_sites_everywhere(solarsystems: &Solarsystems) -> Vec<(Solarsystem, Site)> {
-    let mut result = Vec::new();
-    for solarsystem in solarsystems.data.keys().copied() {
-        let sites = read_sites(solarsystem).expect("init at least created gate sites");
-        for site in sites.all() {
-            result.push((solarsystem, site));
-        }
-    }
-    result
-}
-
-pub fn write_site_entities(
-    solarsystem: Solarsystem,
-    site: Site,
-    entities: &[Entity],
-) -> Result<()> {
-    if entities.is_empty() {
-        return Err(anyhow::anyhow!(
-            "dont write empty site entities. remove_site instead {} {:?}",
-            solarsystem,
-            site
-        ));
-    }
-    write(&filename_site_entities(solarsystem, site), &entities)
-}
-
-fn write_sites(solarsystem: Solarsystem, sites: &SitesNearPlanet) -> Result<()> {
-    write(&filename_sites(solarsystem), sites)
-}
-
-pub fn add_site(
-    solarsystem: Solarsystem,
-    planet: u8,
-    site: Site,
-    entities: &[Entity],
-) -> Result<()> {
-    write_site_entities(solarsystem, site, entities)?;
-
-    let mut sites = read_sites(solarsystem)?;
-    sites.add(planet, site);
-    write_sites(solarsystem, &sites)
-}
-
-pub fn remove_site(solarsystem: Solarsystem, site: Site) -> Result<()> {
-    let mut sites = read_sites(solarsystem)?;
-    sites.remove(site);
-    write_sites(solarsystem, &sites)?;
-    delete(&filename_site_entities(solarsystem, site))?;
-    Ok(())
-}
-
-pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
+pub fn ensure_static_sites(statics: &Statics, sites: &mut Sites) -> Result<()> {
     for (solarsystem, data) in &statics.solarsystems.data {
-        let mut sites = read_sites(*solarsystem).unwrap_or_default();
+        let mut system_sites = sites.read_sites(*solarsystem).unwrap_or_default();
 
         // Purge stations and stargates from overview.
         // If they are gone from the data players shouldnt be able to warp to them anymore
-        for site in sites.all() {
+        for site in system_sites.all() {
             if matches!(site, Site::Stargate(_) | Site::Station(_)) {
-                sites.remove(site);
+                system_sites.remove(site);
             }
         }
 
@@ -121,7 +123,8 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             let site = Site::Stargate(*target);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entities(*solarsystem, site)
+            let mut entities = sites
+                .read_entities(*solarsystem, site)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, Entity::Facility(_) | Entity::Npc(_)))
@@ -131,9 +134,9 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             add_guards(statics, &mut entities);
             // Add stargate
             entities.insert(0, Entity::Facility(Facility::Stargate));
-            write_site_entities(*solarsystem, site, &entities)?;
+            sites.write_entities(*solarsystem, site, &entities)?;
 
-            sites.add(*planet, site);
+            system_sites.add(*planet, site);
         }
 
         // Ensure stations exist
@@ -142,7 +145,8 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             let site = Site::Station(index as u8);
 
             // Read and purge facilities and guards
-            let mut entities = read_site_entities(*solarsystem, site)
+            let mut entities = sites
+                .read_entities(*solarsystem, site)
                 .unwrap_or_default()
                 .iter()
                 .filter(|o| !matches!(o, Entity::Facility(_) | Entity::Npc(_)))
@@ -152,12 +156,12 @@ pub fn ensure_static_sites(statics: &Statics) -> Result<()> {
             add_guards(statics, &mut entities);
             // Add station
             entities.insert(0, Entity::Facility(Facility::Station));
-            write_site_entities(*solarsystem, site, &entities)?;
+            sites.write_entities(*solarsystem, site, &entities)?;
 
-            sites.add(planet, site);
+            system_sites.add(planet, site);
         }
 
-        write_sites(*solarsystem, &sites)?;
+        sites.write_sites(*solarsystem, &system_sites)?;
     }
     Ok(())
 }

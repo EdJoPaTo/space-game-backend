@@ -8,7 +8,7 @@ use space_game_typings::fixed::Statics;
 use space_game_typings::ship::{Fitting, Ship};
 use space_game_typings::site::{Entity, Site, SitesNearPlanet};
 
-use crate::persist::site::{read_site_entities, read_sites, write_site_entities};
+use crate::persist::Persist;
 
 fn generate_unique(existing: &mut Vec<u8>) -> u8 {
     let mut rng = rand::thread_rng();
@@ -21,13 +21,16 @@ fn generate_unique(existing: &mut Vec<u8>) -> u8 {
     }
 }
 
-pub fn all(statics: &Statics) -> anyhow::Result<()> {
+pub fn all(statics: &Statics, persist: &mut Persist) -> anyhow::Result<()> {
     for solarsystem in statics.solarsystems.data.keys().copied() {
-        let sites = read_sites(solarsystem).expect("init at least created gate sites");
+        let sites = persist
+            .sites
+            .read_sites(solarsystem)
+            .expect("init at least created gate sites");
 
         // Asteroid Belts
-        generate_asteroid_belts(statics, solarsystem, &sites)?;
-        spawn_asteroid_belt_pirates(statics, solarsystem, &sites)?;
+        generate_asteroid_belts(statics, persist, solarsystem, &sites)?;
+        spawn_asteroid_belt_pirates(statics, persist, solarsystem, &sites)?;
     }
 
     Ok(())
@@ -35,6 +38,7 @@ pub fn all(statics: &Statics) -> anyhow::Result<()> {
 
 fn generate_asteroid_belts(
     statics: &Statics,
+    persist: &mut Persist,
     solarsystem: Solarsystem,
     sites: &SitesNearPlanet,
 ) -> anyhow::Result<()> {
@@ -61,7 +65,9 @@ fn generate_asteroid_belts(
             Entity::new_asteroid(Ore::Tormit, 10, 12),
             Entity::new_asteroid(Ore::Vesmit, 6, 4),
         ];
-        crate::persist::site::add_site(solarsystem, planet, site, &entities)?;
+        persist
+            .sites
+            .add_site(solarsystem, planet, site, &entities)?;
     }
 
     Ok(())
@@ -69,13 +75,14 @@ fn generate_asteroid_belts(
 
 fn spawn_asteroid_belt_pirates(
     statics: &Statics,
+    persist: &mut Persist,
     solarsystem: Solarsystem,
     sites: &SitesNearPlanet,
 ) -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
     for site in sites.all() {
         if let Site::AsteroidField(_) = site {
-            let mut entities = read_site_entities(solarsystem, site)?;
+            let mut entities = persist.sites.read_entities(solarsystem, site)?;
 
             let npc_amount = entities
                 .iter()
@@ -93,7 +100,7 @@ fn spawn_asteroid_belt_pirates(
                     NpcFaction::Pirates,
                     Ship::new(statics, fitting),
                 )));
-                write_site_entities(solarsystem, site, &entities)?;
+                persist.sites.write_entities(solarsystem, site, &entities)?;
             }
         }
     }

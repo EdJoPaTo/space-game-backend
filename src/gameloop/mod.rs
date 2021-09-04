@@ -43,7 +43,7 @@ fn once(statics: &Statics, persist: &mut Persist) -> anyhow::Result<()> {
 
     let sites_took = {
         let measure = Instant::now();
-        sites::all(statics).map_err(|err| anyhow!("gameloop::sites {}", err))?;
+        sites::all(statics, persist).map_err(|err| anyhow!("gameloop::sites {}", err))?;
         measure.elapsed()
     };
 
