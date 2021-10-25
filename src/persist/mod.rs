@@ -104,7 +104,7 @@ fn delete<P: AsRef<Path>>(file: P) -> std::io::Result<()> {
 fn list<P: AsRef<Path>>(folder: P) -> Vec<PathBuf> {
     let mut result = Vec::new();
     if let Ok(direntry) = fs::read_dir(folder) {
-        for entry in direntry.filter_map(|o| o.ok()) {
+        for entry in direntry.filter_map(Result::ok) {
             if entry.path().is_dir() {
                 let mut children = list(entry.path());
                 result.append(&mut children);
